@@ -1,0 +1,34 @@
+#! /bin/bash
+
+# Interface wrapper for calling Spot's ltl2tgba as a LTL->UBA tool
+# Invoke from PRISM with
+#  -ltluba -ltl2datool hoa-ltl2tgba-uba-for-prism -ltl2dasyntax lbt
+#
+# Expects the ltl2tgba executable on the PATH, otherwise
+# specify the location using
+export LTL2TGBA=ltl2tgba
+# before invoking PRISM
+#
+# You can disable the WDBA minimization phase of ltl2tgba to obtain
+# UBA by setting
+# export LTL2TGBA_NOWDBA=0
+
+
+# Take the ltl2tgba executable from the LTL2TGBA environment variable
+# Otherwise, default to "ltl2tgba", which will search the PATH
+LTL2TGBA_BIN=${LTL2TGBA-ltl2tgba}
+
+# default to 0
+LTL2TGBA_NOWDBA=${LTL2TGBA_NOWDBA-0}
+
+XTRA_ARGS=""
+if [ "$LTL2TGBA_NOWDBA" -eq "1" ]; then
+    XTRA_ARGS="-x wdba-minimize=0"
+fi
+
+
+# --output=automaton = we want the automaton
+# --output-format=hoa = ... in HOA
+# --ltl2nba = with ltl2tgba as LTL->NBA
+#              -s -B = as Spin neverclaim, NBA output
+$LTL2TGBA_BIN -B -H -U --lbt-input $XTRA_ARGS -F "$1" > "$2"
