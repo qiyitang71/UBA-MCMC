@@ -121,7 +121,8 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_MULTI_MAX_POINTS				= "prism.multiMaxIters";
 	public static final	String PRISM_PARETO_EPSILON					= "prism.paretoEpsilon";
 	public static final	String PRISM_EXPORT_PARETO_FILENAME			= "prism.exportParetoFileName";
-	
+
+	public static final String PRISM_GFG_MC						= "prism.gfgMC";
 	public static final String PRISM_LTL_UBA						= "prism.ltlUba";
 	public static final String PRISM_UBA_PURE						= "prism.ubaPure";
 	public static final String PRISM_UBA_POS_METHOD					= "prism.ubaPosMethod";
@@ -356,6 +357,8 @@ public class PrismSettings implements Observer
 																			"Do not summarize Boolean formulas to APs L0, L1, etc."},
 			{ BOOLEAN_TYPE,		PRISM_LTL_STREETT,						"Generate a DSA for LTL model checking",		"4.3",			new Boolean(false),		"",
 																			"Generate a deterministic Streett automaton for LTL model checking."},
+			{ BOOLEAN_TYPE,		PRISM_GFG_MC,							"Use GFG-NB(C)A for LTL model checking",		"4.3",			new Boolean(false),		"",
+						"Use GfG Buchi/coBuchi automata for LTL model checking."},
 			{ BOOLEAN_TYPE,		PRISM_LTL_UBA,							"Use UBA for LTL model checking",		"4.3",			new Boolean(false),		"",
 																			"Use unambiguous Buchi automata for LTL model checking."},
 			{ BOOLEAN_TYPE,		PRISM_UBA_PURE,							"Use DBA checking instead of UBA if possible",		"4.3",			new Boolean(false),		"",
@@ -1501,7 +1504,9 @@ public class PrismSettings implements Observer
 		else if (sw.equals("ltlstreett")) {
 			set(PRISM_LTL_STREETT, true);
 		}
-
+		else if (sw.equals("gfgmc")) {
+			set(PRISM_GFG_MC, true);
+		}
 		else if (sw.equals("ltluba")) {
 			set(PRISM_LTL_UBA, true);
 		}
@@ -1941,6 +1946,7 @@ public class PrismSettings implements Observer
 		mainLog.println("-exportadv <file> .............. Export an adversary from MDP model checking (as a DTMC)");
 		mainLog.println("-exportadvmdp <file> ........... Export an adversary from MDP model checking (as an MDP)");
 		mainLog.println("-ltlstreett .................... Use deterministic Streett automata for LTL model checking");
+		mainLog.println("-gfgmc ......................... Use GfG automata for LTL model checking");
 		mainLog.println("-ltluba ........................ Use unambiguous Buchi automata for LTL model checking");
 		mainLog.println("-ubapure ....................... Use DBA checking for unambiguous Buchi automata that are actually deterministic");
 		mainLog.println("-ubaposmethod <method>.......... Method for SCC positivity check: svd, qr");

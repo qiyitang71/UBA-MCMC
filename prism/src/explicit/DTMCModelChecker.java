@@ -87,6 +87,10 @@ public class DTMCModelChecker extends ProbModelChecker
 		LTLModelChecker.LTLProduct<DTMC> product;
 		DTMCModelChecker mcProduct;
 
+		if (getSettings().getBoolean(PrismSettings.PRISM_GFG_MC)) {
+			return checkProbPathFormulaLTLViaUBA((DTMC)model, expr, qual, statesOfInterest);
+		}
+
 		if (getSettings().getBoolean(PrismSettings.PRISM_LTL_UBA)) {
 			return checkProbPathFormulaLTLViaUBA((DTMC)model, expr, qual, statesOfInterest);
 		}
@@ -176,6 +180,10 @@ public class DTMCModelChecker extends ProbModelChecker
 		StateValues rewardsProduct, rewards;
 		DTMCModelChecker mcProduct;
 		LTLProduct<DTMC> product;
+
+		if (getSettings().getBoolean(PrismSettings.PRISM_GFG_MC)) {
+			throw new PrismNotSupportedException("Model-checking via GFG automata not supported for reward properties");
+		}
 
 		if (getSettings().getBoolean(PrismSettings.PRISM_LTL_UBA)) {
 			throw new PrismNotSupportedException("Model-checking via UBA not supported for reward properties");
