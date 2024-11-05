@@ -956,7 +956,7 @@ public class LTLUBAModelChecker extends PrismComponent
 			return computeWithDA(model, uba, labelBS, statesOfInterest);
 		}
 
-		product = constructProduct(model, uba, labelBS, statesOfInterest);
+			product = constructProduct(model, uba, labelBS, statesOfInterest);
 		probs = computeValues(product);
 		
 		StateValues result = product.projectToOriginalModel(model, probs);
