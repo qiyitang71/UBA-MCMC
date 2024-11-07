@@ -18,11 +18,11 @@ Accepting transition are all labelled with 5.
 """
 
 def findSuccessor(state, letter, N): #gives list of successor states on reading letter from state
-	if letter == 1: # sigma
+	if letter == 0: # sigma
 		assert(state != 0)
 		return([0,(state & 1)*(2**(N-1))|(state >> 1)])
 
-	elif letter == 0: #pi
+	elif letter == 1: #pi
 		assert(state != 0)
 		lastTwoBit = state & 3
 		if lastTwoBit in [0,3]:
