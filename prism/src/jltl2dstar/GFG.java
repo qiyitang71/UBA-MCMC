@@ -4,8 +4,10 @@ import jltl2ba.APElement;
 import jltl2ba.APSet;
 import jltl2ba.MyBitSet;
 
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Vector;
 
 public class GFG extends NBA{
@@ -49,5 +51,46 @@ public class GFG extends NBA{
         }
     }
 
+    public boolean isAcc(int from,APElement ap,int to){
+        if(accEdges.get(from) == null){
+            return false;
+        }else{
+            HashMap<APElement, MyBitSet> hm = accEdges.get(from);
+            if(hm.get(ap) == null){
+                return false;
+            }else{
+                MyBitSet bs = hm.get(ap);
+                return bs.get(to);
+            }
+        }
+    }
+    /** Print the NBA as a HOA automaton to out */
+    public void print_hoa(PrintStream out) {
+        APSet _apset = this.getAPSet();
+        out.println("HOA: v1");
+        out.println("States: "+size());
+        _apset.print_hoa(out);
+        out.println("Start: "+getStartState().getName());
+        out.println("Acceptance: 1 Inf(0)");
+        out.println("acc-name: Buchi");
+        out.println("properties: trans-labels explicit-labels state-acc no-univ-branch");
+        out.println("--BODY--");
+        for (NBA_State state : this.getIndexSet()) {
+            out.print("State: "+state.getName());  // id
+            out.println((state.isFinal() ? " {0}" : ""));
+
+            for (Map.Entry<APElement, MyBitSet> edge : state) {
+                APElement label = edge.getKey();
+                String labelString = "["+label.toStringHOA(_apset.size())+"]";
+                MyBitSet to_states = edge.getValue();
+                for (Integer to : to_states) {
+                    out.print(labelString);
+                    out.print(" ");
+                    out.println((isAcc(state.getName(),label,to) ? to + " {0}" : to));
+                }
+            }
+        }
+        out.println("--END--");
+    }
 
 }
