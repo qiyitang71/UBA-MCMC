@@ -14,7 +14,7 @@ the binary representation of this number is a binary string of length n, and the
 A value of 1 denotes that q_i is in the state. For eg : for n = 3, 011
 denotes the state {q_0,q_1}. 
 
-Accepting transition are all labelled with 5. 
+Accepting transition are all labelled with 0. 
 """
 
 def findSuccessor(state, letter, N): #gives list of successor states on reading letter from state
@@ -40,29 +40,39 @@ def findSuccessor(state, letter, N): #gives list of successor states on reading 
 		assert(state == 0)
 		return([0,1])
 
+def labelGenerator(letter):
+	labelValues = []
+	for lt in range(4):
+		if lt != letter:
+			labelValues.append("!"+str(lt))
+		else:
+			labelValues.append(str(lt))
+	label = " & ".join(labelValues)
+	return(label)
+
 def ubaGenerator(N):
 	with open(f"uba-family-trans-acc-{N}.hoa",'w') as file:
 		file.write(f"HOA: v1\n")
-		file.write(f"name: uba-family-trans-acc-{N}\n")
+		file.write(f"name: \"uba-family-trans-acc-{N}\"\n")
 		NO_OF_STATES = 2**N -1
 		file.write(f"States: {NO_OF_STATES}\n")
 		file.write(f"Start: 1\n")
 		file.write(f"acc-name: Buchi\n")
-		file.write(f"Acceptance: 1 Inf(5)\n") #each acc transition is given label 5
+		file.write(f"Acceptance: 1 Inf(0)\n") #each acc transition is given label 0
 		file.write(f"AP: 4 \"sigma\" \"pi\" \"hash\" \"dollar\"\n")
 		file.write("properties: trans-labels explicit-labels trans-acc unambiguous\n")
 		file.write(f"--BODY--\n")
 		for state in range(NO_OF_STATES):
 			file.write(f"State: {state}\n")
 			if state == 0:
-				file.write(f"  [3] 0 {5}\n")
-				file.write(f"  [3] 1 {5}\n")
+				file.write(f"  [{labelGenerator(3)}] 0 {0}\n")
+				file.write(f"  [{labelGenerator(3)}] 1 {0}\n")
 			else:
 				for letter in range(3):
 					for successor in findSuccessor(state, letter, N):
-						file.write(f"  [{letter}] {successor} ")
+						file.write(f"  [{labelGenerator(letter)}] {successor} ")
 						if letter in [2,3] or successor == 0:
-							file.write("{5}\n")
+							file.write("{0}\n")
 						else:
 							file.write("\n")
 		file.write(f"--END--")

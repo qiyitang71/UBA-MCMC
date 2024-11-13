@@ -16,7 +16,7 @@ N is the no of boxes.
 Each state of the automata is a number in range 0 to N+1. The state N represents the state q$ and the state N+1 
 representes the sink state(bottom in paper). A state in i range [0,N-1] denotes the state q_i. 
 
-Accepting transition are all labelled with 9. 
+Accepting transition are all labelled with 0. 
 """
 
 def findSuccessor(state, letter, N): #gives list of successor states on reading letter from state
@@ -54,17 +54,25 @@ def findSuccessor(state, letter, N): #gives list of successor states on reading 
 
 
 
-
+def labelGenerator(letter):
+	labelValues = []
+	for lt in range(8):
+		if lt != letter:
+			labelValues.append("!"+str(lt))
+		else:
+			labelValues.append(str(lt))
+	label = " & ".join(labelValues)
+	return(label)
 
 def gfgGenerator(N):
 	with open(f"gfg-family-trans-acc-{N}.hoa",'w') as file:
 		file.write(f"HOA: v1\n")
-		file.write(f"name: gfg-family-trans-acc-{N}\n")
+		file.write(f"name: \"gfg-family-trans-acc-{N}\"\n")
 		NO_OF_STATES = N+2
 		file.write(f"States: {NO_OF_STATES}\n")
-		file.write(f"Start: 1\n")
+		file.write(f"Start: 0\n")
 		file.write(f"acc-name: co-Buchi\n")
-		file.write(f"Acceptance: 1 Inf(9)\n") #each acc transition is given label 9
+		file.write(f"Acceptance: 1 Inf(0)\n") #each acc transition is given label 0
 		file.write("AP: 8 \"sigma 0\" \"pi 0\" \"hash 0\" \"dollar 0\" \"sigma 1\" \"pi 1\" \"hash 1\" \"dollar 1\"\n")
 		file.write("properties: trans-labels explicit-labels trans-acc\n")
 		file.write(f"--BODY--\n")
@@ -72,9 +80,9 @@ def gfgGenerator(N):
 			file.write(f"State: {state}\n")
 			for letter in range(8):
 				for successor in findSuccessor(state, letter, N):
-					file.write(f"  [{letter}] {successor} ")
+					file.write(f"  [{labelGenerator(letter)}] {successor} ")
 					if (state,letter) in [(0,6), (N,3),(N,7)]:
-						file.write("{9}\n")
+						file.write("{0}\n")
 					else:
 						file.write("\n")
 		file.write(f"--END--")
