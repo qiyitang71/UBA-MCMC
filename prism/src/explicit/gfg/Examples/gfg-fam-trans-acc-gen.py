@@ -71,7 +71,7 @@ def gfgGenerator(N):
 		NO_OF_STATES = N+2
 		file.write(f"States: {NO_OF_STATES}\n")
 		file.write(f"Start: 0\n")
-		file.write(f"acc-name: co-Buchi\n")
+		file.write(f"acc-name: Buchi\n")
 		file.write(f"Acceptance: 1 Inf(0)\n") #each acc transition is given label 0
 		file.write("AP: 8 \"sigma 0\" \"pi 0\" \"hash 0\" \"dollar 0\" \"sigma 1\" \"pi 1\" \"hash 1\" \"dollar 1\"\n")
 		file.write("properties: trans-labels explicit-labels trans-acc\n")

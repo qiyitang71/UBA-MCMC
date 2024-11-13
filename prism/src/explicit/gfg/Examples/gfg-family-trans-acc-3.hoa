@@ -2,7 +2,7 @@ HOA: v1
 name: "gfg-family-trans-acc-3"
 States: 5
 Start: 0
-acc-name: co-Buchi
+acc-name: Buchi
 Acceptance: 1 Inf(0)
 AP: 8 "sigma 0" "pi 0" "hash 0" "dollar 0" "sigma 1" "pi 1" "hash 1" "dollar 1"
 properties: trans-labels explicit-labels trans-acc
