@@ -123,7 +123,7 @@ public class NBA implements Iterable<NBA_State> {
 		return _apset;
 	}
 
-	public Vector<NBA_State> getIndexSet(){return _index;}
+	protected Vector<NBA_State> getIndexSet(){return _index;}
 
 	/** Switch the APSet to another with the same number of APs. */
 	public void switchAPSet(APSet new_apset) throws PrismException

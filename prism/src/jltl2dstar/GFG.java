@@ -73,7 +73,7 @@ public class GFG extends NBA{
         out.println("Start: "+getStartState().getName());
         out.println("Acceptance: 1 Inf(0)");
         out.println("acc-name: Buchi");
-        out.println("properties: trans-labels explicit-labels state-acc no-univ-branch");
+        out.println("properties: trans-labels explicit-labels trans-acc");
         out.println("--BODY--");
         for (NBA_State state : this.getIndexSet()) {
             out.print("State: "+state.getName());  // id
