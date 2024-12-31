@@ -88,6 +88,8 @@ public class DTMCUBAProduct extends DTMCSimple {
 		
 		verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
+		mainLog.println("Start constructing product");
+
 		ubaSize = uba.getStateCount();
 		int numAPs = uba.getAPSize();
 		int modelNumStates = dtmc.getNumStates();
@@ -131,6 +133,10 @@ public class DTMCUBAProduct extends DTMCSimple {
 			for (int k = 0; k < numAPs; k++) {
 				s_labels.set(k, labelBS.get(Integer.parseInt(uba.getAPSet().getAP(k).substring(1))).get(s_0));
 			}
+
+			mainLog.println("statesOfInterest: " + statesOfInterest);
+			mainLog.println("s_labels: " + s_labels);
+
 			// Find corresponding initial state in DA
 			NBA_State ubaStartState = uba.getStartState();
 			MyBitSet destinations = ubaStartState.getEdge(new APElement(s_labels));
@@ -138,6 +144,8 @@ public class DTMCUBAProduct extends DTMCSimple {
 				// Language is empty starting from this DTMC start state -> just skip
 				continue;
 			}
+			mainLog.println("LMC state" + s_0 + ", destinations =" + destinations);
+
 			for(Iterator<Integer> initialStatesIterator = destinations.iterator(); initialStatesIterator.hasNext();) {
 				// Add (initial) state to product
 				Integer q_0 = initialStatesIterator.next();
@@ -308,7 +316,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("A = \n"+matrix.toString());
+			//mainLog.println("A = \n"+matrix.toString());
 		}
 
 		if (subtractIdentity) {
@@ -317,7 +325,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 			}
 
 			if (verbosity >= 2) {
-				mainLog.println("A - I = \n"+matrix.toString());
+				//mainLog.println("A - I = \n"+matrix.toString());
 			}
 		}
 
@@ -359,7 +367,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("A = \n"+matrix.toString());
+			//mainLog.println("A = \n"+matrix.toString());
 		}
 
 		for (int i = 0; i < size; i++) {
@@ -367,7 +375,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("A - I = \n"+matrix.toString());
+			//mainLog.println("A - I = \n"+matrix.toString());
 		}
 
 		// Add cut
@@ -376,7 +384,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("(A - I) + cut condition = \n"+matrix.toString());
+			//mainLog.println("(A - I) + cut condition = \n"+matrix.toString());
 		}
 		
 		return matrix;
@@ -415,7 +423,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("A = \n"+matrix.toString());
+			//mainLog.println("A = \n"+matrix.toString());
 		}
 		
 		for (int i = 0; i < size; i++) {
@@ -423,8 +431,8 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("A - I = \n" + matrix.toString());
-			mainLog.println("B = \n" + B.toString());
+			//mainLog.println("A - I = \n" + matrix.toString());
+			//mainLog.println("B = \n" + B.toString());
 		}
 
 		return new Pair<DoubleMatrix2D, DoubleMatrix2D>(matrix, B);

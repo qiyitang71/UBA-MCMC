@@ -458,6 +458,8 @@ public class HOAF2NBA implements HOAConsumer {
 			for (String p : properties) {
 				output.println(p);
 			}
+			output.println(result.getFinalStates());
+
 		} catch (Exception e) {
 			System.err.println(e.toString());
 			rv = 1;

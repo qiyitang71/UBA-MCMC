@@ -153,6 +153,8 @@ public class LTLUBAModelChecker extends PrismComponent
 				labelBS.add(labelStates);
 				uba.getAPSet().renameAP(i, "L"+i);
 			}
+			mainLog.println("labelBS: " + labelBS);
+
 		} else {
 			// Model check maximal state formulas
 			LTLModelChecker ltlMC = new LTLModelChecker(this);
@@ -408,7 +410,7 @@ public class LTLUBAModelChecker extends PrismComponent
 			sccMatrix.zMult(oldX, newX);
 
 			if (verbosity >= 2) {
-				mainLog.println("Iteration " + iter+ ": "+newX.toString());
+				//mainLog.println("Iteration " + iter+ ": "+newX.toString());
 			}
 
 			// check whether the we have a "drop" in all elements of the vector
@@ -582,7 +584,7 @@ public class LTLUBAModelChecker extends PrismComponent
 		Algebra algebra = new Algebra();
 		DoubleMatrix2D B = new DenseDoubleMatrix2D(matrix.rows(), 1);
 		B.setQuick(matrix.rows()-1, 0, 1);
-		if (verbosity >= 2) mainLog.println("B = \n" + B);
+		//if (verbosity >= 2) mainLog.println("B = \n" + B);
 		
 		if (verbosity >= 1) timer.stop();
 
