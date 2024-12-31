@@ -147,7 +147,7 @@ public class LTLGFGModelChecker extends PrismComponent
 //                BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
 //                labelBS.add(labelStates);
 
-                uba.getAPSet().renameAP(i, "L"+i);
+                //uba.getAPSet().renameAP(i, "L"+i);//do not rename
             }
         } else {
             mainLog.println("\nLTL to GFG not supported");
@@ -564,6 +564,7 @@ public class LTLGFGModelChecker extends PrismComponent
                 }
             }
         }
+        mainLog.println("bisMap = " + bisMap);
     }
 
         private Set<Integer> generateCut(DTMCGFGProduct product, final int probState, final BitSet mcc) throws PrismException  {
@@ -617,6 +618,8 @@ public class LTLGFGModelChecker extends PrismComponent
                         continue;
                     }
 
+                    //mainLog.println("product.getNumChoices(left) = " + product.getNumChoices(left));
+
                     for(int c = 0; c < product.getNumChoices(left); c++) {
                         APElement ap = (APElement) product.getAction(left, c);
                         Set<Integer> leftSuccs = product.getProbStatesSuccessors(left,ap);
@@ -626,12 +629,15 @@ public class LTLGFGModelChecker extends PrismComponent
                         } else {
                             rightSuccs = product.getProbStatesSuccessors(right,ap);
                         }
+                        //mainLog.println("leftSuccs = " + leftSuccs + "; rightSuccs = " + rightSuccs);
+
                         visited.add(current);
                         countVisited++;
                         for (Integer leftSucc : leftSuccs) {
                             for (Integer rightSucc : rightSuccs) {
                                 if (!mcc.get(leftSucc) || !mcc.get(rightSucc)) {
                                     // we don't want to leave the SCC
+                                    //mainLog.println("leftSucc = " + leftSucc + "; rightSucc = " + rightSucc);
                                     continue;
                                 }
 
@@ -643,8 +649,8 @@ public class LTLGFGModelChecker extends PrismComponent
                                 // ... we extend the word and add to the BFS queue
                                 SharedWord<APElement> curWord = word.append(ap);
 
-                                boolean isLeftBis = (bisMap.get(probState) == null)? true: bisMap.get(probState).get(leftSucc);
-                                boolean isRightBis = (bisMap.get(probState) == null)? true: bisMap.get(probState).get(rightSucc);
+                                boolean isLeftBis = (bisMap.get(probState) == null)? false: bisMap.get(probState).get(leftSucc);
+                                boolean isRightBis = (bisMap.get(probState) == null)? false: bisMap.get(probState).get(rightSucc);
 
 
                                 if ((!isLeftBis  &&(rightSucc == probState && !succsForZ.get(leftSucc).isEmpty()) ||
@@ -684,7 +690,9 @@ public class LTLGFGModelChecker extends PrismComponent
                                         Set<Integer> newReach = new HashSet<Integer>();
                                         Set<Integer> succs = product.getProbStatesSuccessors(probState_, y);
                                         for (Integer succState : succs) {
-                                            newReach.addAll(succsForZ.get(succState));
+                                            if(succsForZ.get(succState) != null) {
+                                                newReach.addAll(succsForZ.get(succState));
+                                            }
                                         }
                                         succsForZ_.put(probState_, newReach);
                                     }
@@ -713,13 +721,34 @@ public class LTLGFGModelChecker extends PrismComponent
             }
         }
 
-        Set<Integer> C = succsForZ.get(probState);
+        Set<Integer> tempC = succsForZ.get(probState);
 
         if (verbosity >= 1) {
-            timer.stop(" ("+iterations+" iterations, " + countVisited + " extension checks, cut C has " + C.size() + " states)");
+            timer.stop(" ("+iterations+" iterations, " + countVisited + " extension checks, cut tempC has " + tempC.size() + " states)");
         }
 
-        return C;
+        //get rid of bisimilar states
+            Set<Integer> C = new HashSet<Integer>();
+            for (int c: tempC){
+                Set<Integer> setC = new HashSet<>();
+                boolean isContained = false;
+                if(bisMap.get(c) != null){
+                    for(int s: IterableBitSet.getSetBits(bisMap.get(c)) ) {
+                        if (C.contains(s)) {
+                            isContained = true;
+                            break;
+                        }
+                    }
+                }
+                if(!isContained)
+                    C.add(c);
+            }
+
+            if (verbosity >= 1) {
+                timer.stop(" ("+iterations+" iterations, " + countVisited + " extension checks, cut C has " + C.size() + " states)");
+            }
+
+            return C;
     }
 
 

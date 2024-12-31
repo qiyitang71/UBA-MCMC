@@ -51,6 +51,7 @@ public class DTMCGFGProduct extends MDPSimple {
     private enum MatrixType {MATRIX_DENSE, MATRIX_SPARSE, MATRIX_RC};
     private explicit.gfg.DTMCGFGProduct.MatrixType matrixType = explicit.gfg.DTMCGFGProduct.MatrixType.MATRIX_RC;
 
+    private APSet actions;
     //public DTMCUBAProduct dtmcProduct;
 
     private DoubleMatrix2D newMatrix(int rows, int columns) {
@@ -246,11 +247,19 @@ public class DTMCGFGProduct extends MDPSimple {
                 accEdges.put(i, apset);
             }
         }
+
+        actions = uba.getAPSet();
         if(verbosity >= 2) {
             mainLog.println("UBA accepting transitions: " + uba.getAccEdges());
             mainLog.println("Accepting transitions: " + accEdges);
             uba.print_hoa(System.out);
             mainLog.println("Product: " + this.toString());
+            mainLog.println("Labels: " + uba.getAPSet());
+            mainLog.print("invMap: ");
+            for(int i = 0; i < this.numStates; i++){
+                mainLog.print(invMap[i] + ", ");
+            }
+            mainLog.print("\n");
         }
 
         //final LTLProduct<M> product = new LTLProduct<M>(productModel, dtmc, null, daSize, invMap);;
@@ -265,6 +274,7 @@ public class DTMCGFGProduct extends MDPSimple {
         //}
 
         //return product;
+
 
     }
 
@@ -391,7 +401,7 @@ public class DTMCGFGProduct extends MDPSimple {
         }
 
         for (int i = 0; i < size; i++) {
-            //matrix.setQuick(i,i,  matrix.getQuick(i, i) - 1.0);
+            matrix.setQuick(i,i,  matrix.getQuick(i, i) - 1.0);
         }
 
         if (verbosity >= 2) {
@@ -465,8 +475,14 @@ public class DTMCGFGProduct extends MDPSimple {
 
             for(int c = 0; c < getNumChoices(probState); c++){
                 APElement ap = (APElement) getAction(probState, c);
-                if(ap.toString().split("_")[0] == symbol.toString().split("_")[0]){
+                //mainLog.println("ap = " + ap.toString() + ", ap.IntegerList()" + ap.IntegerList());
+                String a1 = actions.getAP(ap.IntegerList().get(0));
+                String a2 = actions.getAP(symbol.IntegerList().get(0));
+                //mainLog.println("a1 = " + a1 + ", a2 = " + a2 + ", a1.split()[0] = " + a1.split("_")[0]);
+
+                if(a1.split("_")[0].equals( a2.split("_")[0])){
                     result.addAll(getProbStatesSuccessors(probState,c));
+                    //mainLog.println("result = " + result);
                 }
             }
             return result;
