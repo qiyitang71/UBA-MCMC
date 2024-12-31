@@ -39,7 +39,7 @@ import prism.PrismLog;
 import prism.PrismSettings;
 
 public class DTMCUBAProduct extends DTMCSimple {
-	
+
 	protected MyBitSet finalStates;
 	protected int ubaSize;
 	protected int invMap[];
@@ -50,42 +50,42 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 	private enum MatrixType {MATRIX_DENSE, MATRIX_SPARSE, MATRIX_RC};
 	private MatrixType matrixType = MatrixType.MATRIX_RC;
-	
+
 	private DoubleMatrix2D newMatrix(int rows, int columns) {
 		switch (matrixType) {
-		case MATRIX_DENSE:
-			return new DenseDoubleMatrix2D(rows, columns);
-		case MATRIX_RC:
-			return new RCDoubleMatrix2D(rows, columns);
-		case MATRIX_SPARSE:
-			return new SparseDoubleMatrix2D(rows, columns);
-		default:
-			throw new IllegalStateException();
+			case MATRIX_DENSE:
+				return new DenseDoubleMatrix2D(rows, columns);
+			case MATRIX_RC:
+				return new RCDoubleMatrix2D(rows, columns);
+			case MATRIX_SPARSE:
+				return new SparseDoubleMatrix2D(rows, columns);
+			default:
+				throw new IllegalStateException();
 		}
 	}
-	
+
 	public Set<Integer> getProbStatesSuccessors(final int probState) {
 		Set<Integer> result = new HashSet<Integer>();
-		
+
 		for(Iterator<Integer> probSucc = getSuccessorsIterator(probState); probSucc.hasNext();) {
 			result.add(probSucc.next());
 		}
-		
+
 		return result;
 	}
-	
+
 	public int getDTMCState(final int prodState) {
 		return invMap[prodState]/ubaSize;
 	}
-	
+
 	public int getUBAState(final int prodState) {
 		return invMap[prodState]  % ubaSize;
 	}
-	
+
 	public DTMCUBAProduct(PrismComponent parent, DTMC dtmc, NBA uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
 		this.mainLog = parent.getLog();
 		this.settings = parent.getSettings();
-		
+
 		verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
 		mainLog.println("Start constructing product");
@@ -158,7 +158,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 				map[s_0 * ubaSize + q_0] = getNumStates() - 1;
 			}
-			
+
 		}
 
 		// Product states
@@ -183,33 +183,33 @@ public class DTMCUBAProduct extends DTMCSimple {
 					for (int k = 0; k < numAPs; k++) {
 						s_labels.set(k, labelBS.get(Integer.parseInt(uba.getAPSet().getAP(k).substring(1))).get(s_2));
 					}
-					
+
 					// Find corresponding successor in UBA
 					NBA_State ubaState = uba.get(q_1);
 					MyBitSet destinations = ubaState.getEdge(new APElement(s_labels));
 					for(Iterator<Integer> ubaStatesIterator = destinations.iterator(); ubaStatesIterator.hasNext();) {
 						q_2 = ubaStatesIterator.next();
-					    if (q_2 < 0) {
-					    	throw new PrismException("The deterministic automaton is not complete (state " + q_1 + ")");
-					    }
-					    // Add state/transition to model
-					    if (!visited.get(s_2 * ubaSize + q_2) && map[s_2 * ubaSize + q_2] == -1) {
-					    	queue.add(new Point(s_2, q_2));
+						if (q_2 < 0) {
+							throw new PrismException("The deterministic automaton is not complete (state " + q_1 + ")");
+						}
+						// Add state/transition to model
+						if (!visited.get(s_2 * ubaSize + q_2) && map[s_2 * ubaSize + q_2] == -1) {
+							queue.add(new Point(s_2, q_2));
 							//Create probabilistic state
 							addState();
 							map[s_2*ubaSize + q_2] = getNumStates() - 1;
-					    	if (prodStatesList != null) {
-					    		// Store state information for the product
-					    		prodStatesList.add(dtmc.getStatesList().get(s_2));
-					    	}
-					    }
-					    addToProbability(map[s_1*ubaSize + q_1], map[s_2*ubaSize + q_2], prob);
+							if (prodStatesList != null) {
+								// Store state information for the product
+								prodStatesList.add(dtmc.getStatesList().get(s_2));
+							}
+						}
+						addToProbability(map[s_1*ubaSize + q_1], map[s_2*ubaSize + q_2], prob);
 					}
 				}
 			}
 		}
 
-		// Build a mapping from state indices to states (s,q), encoded as (s * daSize + q) 
+		// Build a mapping from state indices to states (s,q), encoded as (s * daSize + q)
 		//System.out.println("Map = " + Arrays.toString(map));
 		invMap = new int[getNumStates()];
 		for (int i = 0; i < map.length; i++) {
@@ -226,7 +226,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 		//final MDPSparse productModel;
 		//mainLog.println("Converting product model to MDPSparse");
-		
+
 		//Lift acceptance condition
 		finalStates = new MyBitSet(getNumStates());
 		for(int i = 0; i < getNumStates(); i++) {
@@ -236,7 +236,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		if(verbosity >= 2) {
 			mainLog.println("Final states: " + finalStates);
 		}
-		
+
 		//final LTLProduct<M> product = new LTLProduct<M>(productModel, dtmc, null, daSize, invMap);;
 
 		//// generate acceptance for the product model by lifting
@@ -244,18 +244,18 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 		//// lift the labels
 		//for (String label : dtmc.getLabels()) {
-			//BitSet liftedLabel = product.liftFromModel(dtmc.getLabelStates(label));
-			//prodModel.addLabel(label, liftedLabel);
+		//BitSet liftedLabel = product.liftFromModel(dtmc.getLabelStates(label));
+		//prodModel.addLabel(label, liftedLabel);
 		//}
 
 		//return product;
-	
+
 	}
-	
+
 	public MyBitSet getFinalStates() {
 		return finalStates;
 	}
-	
+
 	public String SCC2Octave(BitSet scc) {
 		String result = " A = [";
 		int size = 0;
@@ -275,17 +275,17 @@ public class DTMCUBAProduct extends DTMCSimple {
 					if(scc.get(succ)) {
 						pseudoDistribution[map.get(new Integer(succ))] = entry.getValue();
 					}
-				}	
+				}
 			}
 			for(int pos = 0; pos < size; pos++) {
 				result += pseudoDistribution[pos] + " ";
 			}
 			result += "\n";
-		}	
+		}
 		result += "]";
 		return result;
 	}
-	
+
 	DoubleMatrix2D positivityMatrixForSCC(BitSet scc, Map<Integer,Integer> map, boolean subtractIdentity) throws PrismException {
 
 		int size = 0;
@@ -296,7 +296,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 			map.put(i, size);
 			size++;
 		}
-		
+
 		if (verbosity >= 2) {
 			mainLog.println("SCC mapping = "+map);
 		}
@@ -308,9 +308,9 @@ public class DTMCUBAProduct extends DTMCSimple {
 			for(Iterator<Entry<Integer, Double>> it = getTransitionsIterator(from); it.hasNext();) {
 				Entry<Integer,Double> probMove = it.next();
 				int to = probMove.getKey();
-				
+
 				if (scc.get(to)) {
-						matrix.setQuick(map.get(from), map.get(to), probMove.getValue());
+					matrix.setQuick(map.get(from), map.get(to), probMove.getValue());
 				}
 			}
 		}
@@ -346,7 +346,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 				throw new PrismException("Implementation error: Cut is not contained in probStates(SCC)");
 			}
 		}
-		
+
 		if (verbosity >= 2) {
 			mainLog.println("SCC mapping = "+map);
 		}
@@ -359,7 +359,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 			for(Iterator<Entry<Integer, Double>> it = getTransitionsIterator(from); it.hasNext();) {
 				Entry<Integer,Double> probMove = it.next();
 				int to = probMove.getKey();
-	
+
 				if (scc.get(to)) {
 					matrix.setQuick(map.get(from), map.get(to), probMove.getValue());
 				}
@@ -386,7 +386,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 		if (verbosity >= 2) {
 			//mainLog.println("(A - I) + cut condition = \n"+matrix.toString());
 		}
-		
+
 		return matrix;
 	}
 
@@ -418,14 +418,14 @@ public class DTMCUBAProduct extends DTMCSimple {
 					value -= probMove.getValue() * (Double)knownValues.getValue(to);
 					B.setQuick(map.get(from), 0, value);
 				}
-				
+
 			}
 		}
 
 		if (verbosity >= 2) {
 			//mainLog.println("A = \n"+matrix.toString());
 		}
-		
+
 		for (int i = 0; i < size; i++) {
 			matrix.setQuick(i,i,  matrix.getQuick(i, i) - 1.0);
 		}
@@ -448,10 +448,10 @@ public class DTMCUBAProduct extends DTMCSimple {
 			}
 			result.add(succState);
 		}
-		
+
 		return result;
 	}
-	
+
 	public Set<Integer> getProbStatesSuccessors(final int probState, List<Integer> word) {
 		Set<Integer> current = new LinkedHashSet<Integer>();
 		current.add(probState);
@@ -466,7 +466,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 		return current;
 	}
-	
+
 	public Set<Integer> getProbStatesSuccessors(Set<Integer> probStates, List<Integer> word) {
 		Set<Integer> result = new HashSet<Integer>();
 		for (Integer probState : probStates) {
@@ -474,8 +474,8 @@ public class DTMCUBAProduct extends DTMCSimple {
 		}
 		return result;
 	}
-	
-	
+
+
 	public int[] getInvMap() {
 		return invMap;
 	}

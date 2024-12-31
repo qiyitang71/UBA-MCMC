@@ -143,10 +143,12 @@ public class LTLGFGModelChecker extends PrismComponent
             for (int i=0; i<uba.getAPSet().size(); i++) {
                 Expression label = apExpressions.get(i);
                 label.typeCheck();
-
-//                BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
-//                labelBS.add(labelStates);
-
+                if(mc.checkExpression(model, label, null) != null) {
+                    BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+                    labelBS.add(labelStates);
+                }else{
+                    labelBS.add(new BitSet());
+                }
                 //uba.getAPSet().renameAP(i, "L"+i);//do not rename
             }
         } else {
@@ -269,10 +271,10 @@ public class LTLGFGModelChecker extends PrismComponent
                 }*/
                 if (isPositive) posMccCount++;
             }
-            timer.stop(" ("+posMccCount+" positive SCCs, known probabilities for "+S_MCC_pos.cardinality()+" states)");
+            timer.stop(" ("+posMccCount+" positive MCCs, known probabilities for "+S_MCC_pos.cardinality()+" states)");
 
             if (verbosity >= 2) {
-                mainLog.println("Partial result (all SCCs):");
+                mainLog.println("Partial result (all MCCs):");
                 result.printFiltered(mainLog, S_MCC_pos, true, false, false, true);
             }
             //*******************
@@ -399,7 +401,7 @@ public class LTLGFGModelChecker extends PrismComponent
                     throw new PrismException("Strange things are going on (rank = " + rank + ", matrix has size " + rows + "x" + rows +")..");
                 }
 
-                if (verbosity >= 1) mainLog.println("Rank of SCC " + mccIndex + " = " + rank + ", full rank is " + rows);
+                if (verbosity >= 1) mainLog.println("Rank of MCC " + mccIndex + " = " + rank + ", full rank is " + rows);
                 positive = rank < rows;
                 break;
             }
@@ -450,7 +452,7 @@ public class LTLGFGModelChecker extends PrismComponent
 
             double value = solution.getQuick(solutionIndex, 0);
             if (sanityCheck && value == 0.0) {
-                throw new PrismException("Something strange going on (probability in positive SCC is zero for state "+productIndex+")");
+                throw new PrismException("Something strange going on (probability in positive MCC is zero for state "+productIndex+")");
             }
             result.setDoubleValue(productIndex, value);
             assert(!knownValues.get(productIndex));
@@ -470,7 +472,7 @@ public class LTLGFGModelChecker extends PrismComponent
         if (verbosity >= 1) timer.stop();
 
         if (verbosity >= 1) {
-            mainLog.println("Sum of probabilities for the cut C = "+cutSum + " for SCC "+mccIndex);
+            mainLog.println("Sum of probabilities for the cut C = "+cutSum + " for MCC "+mccIndex);
             mainLog.println("Probabilities in MCC " +mccIndex + " are in the range ["+minValue+","+maxValue+"]");
         }
     }
