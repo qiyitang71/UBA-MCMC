@@ -12,7 +12,7 @@ PRISM_DIR_REL = ../..
 
 JNI_GEN_HEADER_DIR=$(THIS_DIR)/$(PRISM_DIR_REL)/$(INCLUDE_DIR)/jni
 
-JAVA_FILES_ALL = $(wildcard *.java rewards/*.java modelviews/*.java graphviz/*.java)
+JAVA_FILES_ALL = $(wildcard *.java rewards/*.java modelviews/*.java graphviz/*.java gfg/*.java)
 JAVA_FILES = $(subst package-info.java,,$(JAVA_FILES_ALL))
 CLASS_FILES = $(JAVA_FILES:%.java=$(PRISM_DIR_REL)/$(CLASSES_DIR)/$(THIS_DIR)/%.class)
 

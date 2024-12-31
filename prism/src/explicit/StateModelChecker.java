@@ -894,7 +894,7 @@ public class StateModelChecker extends PrismComponent
 	protected StateValues checkExpressionLabel(Model model, ExpressionLabel expr, BitSet statesOfInterest) throws PrismException
 	{
 		// TODO: optimize evaluation using statesOfInterest
-
+	try{
 		LabelList ll;
 		int i;
 
@@ -929,8 +929,11 @@ public class StateModelChecker extends PrismComponent
 				}
 			}
 		}
-		throw new PrismException("Unknown label \"" + expr.getName() + "\"");
-}
+//		throw new PrismException("Unknown label \"" + expr.getName() + "\"" + "in explicit/StateModelChecker.java");
+		}catch(PrismException e){
+	}
+		return null;
+	}
 
 	// Check property ref
 

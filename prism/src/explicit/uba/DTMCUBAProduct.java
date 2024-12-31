@@ -145,7 +145,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 				addState();
 				addInitialState(getNumStates() - 1);
 				if (verbosity > 2) {
-					mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")");
+					mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")" + " in constructing UBA DTMC product ");
 				}
 
 				map[s_0 * ubaSize + q_0] = getNumStates() - 1;

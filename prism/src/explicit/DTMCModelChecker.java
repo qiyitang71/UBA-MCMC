@@ -44,6 +44,7 @@ import common.IntSet;
 import common.IterableBitSet;
 import common.StopWatch;
 import explicit.LTLModelChecker.LTLProduct;
+import explicit.gfg.LTLGFGModelChecker;
 import explicit.modelviews.DTMCAlteredDistributions;
 import explicit.modelviews.MDPFromDTMC;
 import explicit.rewards.MCRewards;
@@ -88,7 +89,8 @@ public class DTMCModelChecker extends ProbModelChecker
 		DTMCModelChecker mcProduct;
 
 		if (getSettings().getBoolean(PrismSettings.PRISM_GFG_MC)) {
-			return checkProbPathFormulaLTLViaUBA((DTMC)model, expr, qual, statesOfInterest);
+			mainLog.println("Running DTMC GFG Model Checking...");
+			return checkProbPathFormulaLTLViaGFG((DTMC)model, expr, qual, statesOfInterest);
 		}
 
 		if (getSettings().getBoolean(PrismSettings.PRISM_LTL_UBA)) {
@@ -167,6 +169,20 @@ public class DTMCModelChecker extends ProbModelChecker
 	{
 		LTLUBAModelChecker mcUbaLtl;
 		mcUbaLtl = new LTLUBAModelChecker(this);
+		return mcUbaLtl.checkProbPathFormulaLTL(model, expr, qual, statesOfInterest);
+	}
+
+	/**
+	 * Check path formula via UBA model checking
+	 * @param model the model
+	 * @param expr the expression (LTL or HOA path specification)
+	 * @param qual qualitative model checking?
+	 * @param statesOfInterest the states of interest
+	 */
+	protected StateValues checkProbPathFormulaLTLViaGFG(DTMC model, Expression expr, boolean qual, BitSet statesOfInterest) throws PrismException
+	{
+		LTLGFGModelChecker mcUbaLtl;
+		mcUbaLtl = new LTLGFGModelChecker(this);
 		return mcUbaLtl.checkProbPathFormulaLTL(model, expr, qual, statesOfInterest);
 	}
 
@@ -2601,8 +2617,8 @@ public class DTMCModelChecker extends ProbModelChecker
 				Map<String, BitSet> labels = StateModelChecker.loadLabelsFile(args[1]);
 				//System.out.println(labels);
 				BitSet target = labels.get(args[2]);
-				if (target == null)
-					throw new PrismException("Unknown label \"" + args[2] + "\"");
+				//if (target == null)
+					//throw new PrismException("Unknown label \"" + args[2] + "\"");
 				for (int i = 3; i < args.length; i++) {
 					if (args[i].equals("-nopre"))
 						mc.setPrecomp(false);

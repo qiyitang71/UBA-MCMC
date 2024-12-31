@@ -1097,7 +1097,7 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 			if (ll != null)
 				i = ll.getLabelIndex(expr.getName());
 			if (i == -1)
-				throw new PrismException("Unknown label \"" + expr.getName() + "\" in property");
+				throw new PrismException("Unknown label \"" + expr.getName() + "\" in property" + " in prism/StateModelChecker.java");
 			// check recursively
 			return checkExpression(ll.getLabel(i), statesOfInterest);
 		}

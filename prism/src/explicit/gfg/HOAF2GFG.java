@@ -239,7 +239,7 @@ public class HOAF2GFG implements HOAConsumer {
         }
 
         if (accSignature != null) {
-            throw new HOAConsumerException("NBA has transition-based acceptance (state "+stateId+", currently only state-labeled acceptance is supported");
+            //throw new HOAConsumerException("NBA has transition-based acceptance (state "+stateId+", currently only state-labeled acceptance is supported");
         }
 
         int to = conjSuccessors.get(0);
@@ -419,7 +419,7 @@ public class HOAF2GFG implements HOAConsumer {
 
         GFG nba = parseNBA(input, propertyStore);
         if (!propertyStore.contains("unambiguous") && !propertyStore.contains("deterministic")) {
-            throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic'");
+            throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic' HERE IN GFG");
         }
 
         return nba;

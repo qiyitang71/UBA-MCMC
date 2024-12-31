@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Vector;
-
+// for transition-based acceptance
 public class GFG extends NBA{
     private HashMap<Integer, HashMap<APElement, MyBitSet>> accEdges;
     /**
@@ -64,6 +64,11 @@ public class GFG extends NBA{
             }
         }
     }
+
+    public HashMap<Integer, HashMap<APElement, MyBitSet>> getAccEdges(){
+        return accEdges;
+    }
+
     /** Print the NBA as a HOA automaton to out */
     public void print_hoa(PrintStream out) {
         APSet _apset = this.getAPSet();

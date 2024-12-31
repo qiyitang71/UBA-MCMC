@@ -22,12 +22,12 @@ import cern.colt.matrix.impl.RCDoubleMatrix2D;
 import cern.colt.matrix.impl.SparseDoubleMatrix2D;
 import common.IterableBitSet;
 import common.IterableStateSet;
-import explicit.DTMC;
-import explicit.DTMCExplicit;
-import explicit.DTMCSimple;
-import explicit.StateValues;
+import explicit.*;
+import explicit.uba.DTMCUBAProduct;
 import jltl2ba.APElement;
+import jltl2ba.APSet;
 import jltl2ba.MyBitSet;
+import jltl2dstar.GFG;
 import jltl2dstar.NBA;
 import jltl2dstar.NBA_State;
 import parser.State;
@@ -38,9 +38,9 @@ import prism.PrismException;
 import prism.PrismLog;
 import prism.PrismSettings;
 
-public class DTMCGFGProduct extends DTMCSimple {
+public class DTMCGFGProduct extends MDPSimple {
 
-    protected MyBitSet finalStates;
+    protected HashMap<Integer, Set<APElement>> accEdges;
     protected int ubaSize;
     protected int invMap[];
 
@@ -50,6 +50,8 @@ public class DTMCGFGProduct extends DTMCSimple {
 
     private enum MatrixType {MATRIX_DENSE, MATRIX_SPARSE, MATRIX_RC};
     private explicit.gfg.DTMCGFGProduct.MatrixType matrixType = explicit.gfg.DTMCGFGProduct.MatrixType.MATRIX_RC;
+
+    //public DTMCUBAProduct dtmcProduct;
 
     private DoubleMatrix2D newMatrix(int rows, int columns) {
         switch (matrixType) {
@@ -82,20 +84,30 @@ public class DTMCGFGProduct extends DTMCSimple {
         return invMap[prodState]  % ubaSize;
     }
 
-    public DTMCGFGProduct(PrismComponent parent, DTMC dtmc, NBA uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
+    public DTMCGFGProduct(PrismComponent parent, DTMC dtmc, GFG uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
+
         this.mainLog = parent.getLog();
         this.settings = parent.getSettings();
 
         verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
+        //for simplicity, use random DTMC
+//        if (dtmc != null) {
+//            mainLog.println("Not constructing GFG LMC product ...");
+//            return;
+//        }
+
+        mainLog.println("Constructing GFG LMC product ...");
+
         ubaSize = uba.getStateCount();
         int numAPs = uba.getAPSize();
-        int modelNumStates = dtmc.getNumStates();
-        int prodNumStates = modelNumStates * ubaSize;
+        //int modelNumStates =dtmc.getNumStates();
+        int prodNumStates = ubaSize;
         int s_1, s_2, q_1, q_2;
         MyBitSet s_labels = new MyBitSet(numAPs);
         List<State> prodStatesList = null;
 
+ /*     //not sure if we need varlist
         VarList newVarList = null;
 
         if (dtmc.getVarList() != null) {
@@ -103,7 +115,7 @@ public class DTMCGFGProduct extends DTMCSimple {
         }
 
         // Create a (simple, mutable) model of the appropriate type
-        setVarList(newVarList);
+        setVarList(newVarList);*/
 
         // Encoding:
         // each probabilistic state s' = <s, q> = 2*(s * ubaSize + q)
@@ -115,9 +127,13 @@ public class DTMCGFGProduct extends DTMCSimple {
         int map[] = new int[prodNumStates];
         Arrays.fill(map, -1);
 
-        if (dtmc.getStatesList() != null) {
+        //if (dtmc.getStatesList() != null) {
             prodStatesList = new ArrayList<State>();
-        }
+        //}
+
+
+
+
 
 
         // We need results for all states of the original model in statesOfInterest
@@ -126,32 +142,36 @@ public class DTMCGFGProduct extends DTMCSimple {
         // (a) to ensure reachability is done for these states; and
         // (b) to later identify the corresponding product state for the original states
         //     of interest
-        for (int s_0 : new IterableStateSet(statesOfInterest, dtmc.getNumStates())) {
-            // Get BitSet representing APs (labels) satisfied by state s_0
+        /*for (int s_0 : new IterableStateSet(statesOfInterest, dtmc.getNumStates())) {
+            //// Get BitSet representing APs (labels) satisfied by state s_0
             for (int k = 0; k < numAPs; k++) {
                 s_labels.set(k, labelBS.get(Integer.parseInt(uba.getAPSet().getAP(k).substring(1))).get(s_0));
             }
+         */
+        int s_0 = 0;
+        s_labels.set(0, numAPs, true);
             // Find corresponding initial state in DA
             NBA_State ubaStartState = uba.getStartState();
             MyBitSet destinations = ubaStartState.getEdge(new APElement(s_labels));
-            if (destinations.isEmpty()) {
+
+            mainLog.println("numAP =  " + numAPs + ", number of nba_i_getAPSet size = " + uba.nba_i_getAPSet().size());
+
+            /*if (destinations.isEmpty()) {
                 // Language is empty starting from this DTMC start state -> just skip
                 continue;
-            }
-            for(Iterator<Integer> initialStatesIterator = destinations.iterator(); initialStatesIterator.hasNext();) {
+            }*/
                 // Add (initial) state to product
-                Integer q_0 = initialStatesIterator.next();
-                queue.add(new Point(s_0,q_0.intValue()));
-                addState();
-                addInitialState(getNumStates() - 1);
-                if (verbosity > 2) {
-                    mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")");
-                }
+            Integer q_0 = ubaStartState.getName();
+            queue.add(new Point(s_0,q_0.intValue()));
+            addState();
+            addInitialState(getNumStates() - 1);
+            mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")" + " in constructing GFG DTMC product ");
 
-                map[s_0 * ubaSize + q_0] = getNumStates() - 1;
-            }
 
-        }
+            map[s_0 * ubaSize + q_0] = getNumStates() - 1;
+
+
+        //}
 
         // Product states
         //System.out.println("Map = " + Arrays.toString(map));
@@ -166,38 +186,34 @@ public class DTMCGFGProduct extends DTMCSimple {
             // Go through transitions from state s_1 in original model
             int numChoices = 1;
             for (int j = 0; j < numChoices; j++) {
-                Iterator<Map.Entry<Integer, Double>> iter = ((DTMC) dtmc).getTransitionsIterator(s_1);
-                while (iter.hasNext()) {
-                    Map.Entry<Integer, Double> e = iter.next();
-                    s_2 = e.getKey();
-                    double prob = e.getValue();
-                    // Get BitSet representing APs (labels) satisfied by successor state s_2
-                    for (int k = 0; k < numAPs; k++) {
-                        s_labels.set(k, labelBS.get(Integer.parseInt(uba.getAPSet().getAP(k).substring(1))).get(s_2));
-                    }
+                for(APElement ap: uba.nba_i_getAPSet().elements()){
+                    NBA_State ubaState =  uba.get(q_1);
+                   destinations = ubaState.getEdge(ap);
 
-                    // Find corresponding successor in UBA
-                    NBA_State ubaState = uba.get(q_1);
-                    MyBitSet destinations = ubaState.getEdge(new APElement(s_labels));
+                   if(destinations.isEmpty()) continue;
+
+                    Distribution dist = new Distribution();
                     for(Iterator<Integer> ubaStatesIterator = destinations.iterator(); ubaStatesIterator.hasNext();) {
-                        q_2 = ubaStatesIterator.next();
-                        if (q_2 < 0) {
-                            throw new PrismException("The deterministic automaton is not complete (state " + q_1 + ")");
-                        }
-                        // Add state/transition to model
-                        if (!visited.get(s_2 * ubaSize + q_2) && map[s_2 * ubaSize + q_2] == -1) {
-                            queue.add(new Point(s_2, q_2));
-                            //Create probabilistic state
-                            addState();
-                            map[s_2*ubaSize + q_2] = getNumStates() - 1;
-                            if (prodStatesList != null) {
-                                // Store state information for the product
-                                prodStatesList.add(dtmc.getStatesList().get(s_2));
-                            }
-                        }
-                        addToProbability(map[s_1*ubaSize + q_1], map[s_2*ubaSize + q_2], prob);
-                    }
-                }
+                       q_2 = ubaStatesIterator.next();
+                       if (q_2 < 0) {
+                           throw new PrismException("The deterministic automaton is not complete (state " + q_1 + ")");
+                       }
+                       // Add state/transition to model
+                       if (!visited.get(s_1 * ubaSize + q_2) && map[s_1 * ubaSize + q_2] == -1) {
+                           queue.add(new Point(s_1, q_2));
+                           //Create probabilistic state
+                           addState();
+                           map[s_1*ubaSize + q_2] = getNumStates() - 1;
+                           if (prodStatesList != null) {
+                               // Store state information for the product
+                               prodStatesList.add(dtmc.getStatesList().get(s_0)); //???
+                           }
+                       }
+                       dist.add(map[s_1*ubaSize + q_2],2.0/(destinations.cardinality() * numAPs));
+                   }
+                    addActionLabelledChoice(map[s_1*ubaSize + q_1],dist,ap);
+               }
+
             }
         }
 
@@ -220,13 +236,21 @@ public class DTMCGFGProduct extends DTMCSimple {
         //mainLog.println("Converting product model to MDPSparse");
 
         //Lift acceptance condition
-        finalStates = new MyBitSet(getNumStates());
+        accEdges = new HashMap<>();
+
         for(int i = 0; i < getNumStates(); i++) {
             int q = getUBAState(i);
-            finalStates.set(i, uba.getFinalStates().get(q));
+            //APSet apset = new APSet();
+            if(uba.getAccEdges().get(q) != null) {
+                Set<APElement> apset = uba.getAccEdges().get(q).keySet();
+                accEdges.put(i, apset);
+            }
         }
         if(verbosity >= 2) {
-            mainLog.println("Final states: " + finalStates);
+            mainLog.println("UBA accepting transitions: " + uba.getAccEdges());
+            mainLog.println("Accepting transitions: " + accEdges);
+            uba.print_hoa(System.out);
+            mainLog.println("Product: " + this.toString());
         }
 
         //final LTLProduct<M> product = new LTLProduct<M>(productModel, dtmc, null, daSize, invMap);;
@@ -244,10 +268,10 @@ public class DTMCGFGProduct extends DTMCSimple {
 
     }
 
-    public MyBitSet getFinalStates() {
-        return finalStates;
+    public HashMap<Integer, Set<APElement>> getAccEdges() {
+        return accEdges;
     }
-
+/*
     public String SCC2Octave(BitSet scc) {
         String result = " A = [";
         int size = 0;
@@ -277,38 +301,40 @@ public class DTMCGFGProduct extends DTMCSimple {
         result += "]";
         return result;
     }
-
-    DoubleMatrix2D positivityMatrixForSCC(BitSet scc, Map<Integer,Integer> map, boolean subtractIdentity) throws PrismException {
+*/
+    DoubleMatrix2D positivityMatrixForMCC(BitSet mcc, Map<Integer,Integer> map, boolean subtractIdentity) throws PrismException {
 
         int size = 0;
         if (map == null) {
             map = new LinkedHashMap<Integer,Integer>();
         }
-        for (int i : IterableBitSet.getSetBits(scc)) {
+        for (int i : IterableBitSet.getSetBits(mcc)) {
             map.put(i, size);
             size++;
         }
 
         if (verbosity >= 2) {
-            mainLog.println("SCC mapping = "+map);
+            mainLog.println("MCC mapping = "+map);
         }
 
         DoubleMatrix2D matrix = newMatrix(size,size);
 
-        for (Map.Entry<Integer, Integer> states : map.entrySet()) {
+        for (Entry<Integer, Integer> states : map.entrySet()) {
             int from = states.getKey();
-            for(Iterator<Map.Entry<Integer, Double>> it = getTransitionsIterator(from); it.hasNext();) {
-                Map.Entry<Integer,Double> probMove = it.next();
-                int to = probMove.getKey();
+            for(int c = 0; c < getNumChoices(from); c++) {
+                for (Iterator<Entry<Integer, Double>> it = this.getTransitionsIterator(from,c); it.hasNext(); ) {
+                    Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
 
-                if (scc.get(to)) {
-                    matrix.setQuick(map.get(from), map.get(to), probMove.getValue());
+                    if (mcc.get(to)) {
+                        matrix.setQuick(map.get(from), map.get(to), matrix.get(map.get(from),map.get(to))+ probMove.getValue());
+                    }
                 }
             }
         }
 
         if (verbosity >= 2) {
-            mainLog.println("A = \n"+matrix.toString());
+            //mainLog.println("A = \n"+matrix.toString());
         }
 
         if (subtractIdentity) {
@@ -317,7 +343,7 @@ public class DTMCGFGProduct extends DTMCSimple {
             }
 
             if (verbosity >= 2) {
-                mainLog.println("A - I = \n"+matrix.toString());
+               // mainLog.println("A - I = \n"+matrix.toString());
             }
         }
 
@@ -340,7 +366,7 @@ public class DTMCGFGProduct extends DTMCSimple {
         }
 
         if (verbosity >= 2) {
-            mainLog.println("SCC mapping = "+map);
+            mainLog.println("MCC mapping = "+map);
         }
 
         // one row additionally for cut
@@ -348,26 +374,28 @@ public class DTMCGFGProduct extends DTMCSimple {
 
         for (Map.Entry<Integer, Integer> states : map.entrySet()) {
             int from = states.getKey();
-            for(Iterator<Map.Entry<Integer, Double>> it = getTransitionsIterator(from); it.hasNext();) {
-                Map.Entry<Integer,Double> probMove = it.next();
-                int to = probMove.getKey();
+            for(int c = 0; c < getNumChoices(from); c++) {
+                for(Iterator<Map.Entry<Integer, Double>> it = this.getTransitionsIterator(from, c); it.hasNext();) {
+                    Map.Entry<Integer,Double> probMove = it.next();
+                    int to = probMove.getKey();
 
-                if (scc.get(to)) {
-                    matrix.setQuick(map.get(from), map.get(to), probMove.getValue());
+                    if (scc.get(to)) {
+                        matrix.setQuick(map.get(from), map.get(to), matrix.get(map.get(from), map.get(to)) + probMove.getValue());
+                    }
                 }
             }
         }
 
         if (verbosity >= 2) {
-            mainLog.println("A = \n"+matrix.toString());
+            //mainLog.println("A = \n"+matrix.toString());
         }
 
         for (int i = 0; i < size; i++) {
-            matrix.setQuick(i,i,  matrix.getQuick(i, i) - 1.0);
+            //matrix.setQuick(i,i,  matrix.getQuick(i, i) - 1.0);
         }
 
         if (verbosity >= 2) {
-            mainLog.println("A - I = \n"+matrix.toString());
+            //mainLog.println("A - I = \n"+matrix.toString());
         }
 
         // Add cut
@@ -376,7 +404,7 @@ public class DTMCGFGProduct extends DTMCSimple {
         }
 
         if (verbosity >= 2) {
-            mainLog.println("(A - I) + cut condition = \n"+matrix.toString());
+            //mainLog.println("(A - I) + cut condition = \n"+matrix.toString());
         }
 
         return matrix;
@@ -399,23 +427,25 @@ public class DTMCGFGProduct extends DTMCSimple {
 
         for (Map.Entry<Integer, Integer> states : map.entrySet()) {
             int from = states.getKey();
-            for(Iterator<Map.Entry<Integer, Double>> it = getTransitionsIterator(from); it.hasNext();) {
-                Map.Entry<Integer,Double> probMove = it.next();
-                int to = probMove.getKey();
+            for(int c = 0; c < getNumChoices(from); c++) {
+                for (Iterator<Map.Entry<Integer, Double>> it = this.getTransitionsIterator(from, c); it.hasNext(); ) {
+                    Map.Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
 
-                if (unknown.get(to)) {
-                    matrix.setQuick(map.get(from), map.get(to), probMove.getValue());
-                } else {
-                    double value = B.getQuick(map.get(from), 0);
-                    value -= probMove.getValue() * (Double)knownValues.getValue(to);
-                    B.setQuick(map.get(from), 0, value);
+                    if (unknown.get(to)) {
+                        matrix.setQuick(map.get(from), map.get(to), matrix.getQuick(map.get(from), map.get(to)) + probMove.getValue());
+                    } else {
+                        double value = B.getQuick(map.get(from), 0);
+                        value -= probMove.getValue() * (Double) knownValues.getValue(to);
+                        B.setQuick(map.get(from), 0, value);
+                    }
+
                 }
-
             }
         }
 
         if (verbosity >= 2) {
-            mainLog.println("A = \n"+matrix.toString());
+            //mainLog.println("A = \n"+matrix.toString());
         }
 
         for (int i = 0; i < size; i++) {
@@ -423,35 +453,44 @@ public class DTMCGFGProduct extends DTMCSimple {
         }
 
         if (verbosity >= 2) {
-            mainLog.println("A - I = \n" + matrix.toString());
-            mainLog.println("B = \n" + B.toString());
+            //mainLog.println("A - I = \n" + matrix.toString());
+            //mainLog.println("B = \n" + B.toString());
         }
 
         return new Pair<DoubleMatrix2D, DoubleMatrix2D>(matrix, B);
     }
 
-    public Set<Integer> getProbStatesSuccessors(final int probState, final int symbol) {
-        Set<Integer> result = new HashSet<Integer>();
+        public Set<Integer> getProbStatesSuccessors(final int probState, final APElement symbol) {
+            Set<Integer> result = new HashSet<Integer>();
 
-        for (Iterator<Integer> probSucc = getSuccessorsIterator(probState); probSucc.hasNext();) {
-            Integer succState = probSucc.next();
-            if (getDTMCState(succState) != symbol) {
-                continue;
+            for(int c = 0; c < getNumChoices(probState); c++){
+                APElement ap = (APElement) getAction(probState, c);
+                if(ap.toString().split("_")[0] == symbol.toString().split("_")[0]){
+                    result.addAll(getProbStatesSuccessors(probState,c));
+                }
             }
-            result.add(succState);
+            return result;
         }
 
-        return result;
-    }
+        public Set<Integer> getProbStatesSuccessors(final int probState, final int symbol) {
+            Set<Integer> result = new HashSet<Integer>();
 
-    public Set<Integer> getProbStatesSuccessors(final int probState, List<Integer> word) {
+            for (Iterator<Integer> probSucc = getSuccessorsIterator(probState, symbol); probSucc.hasNext();) {
+                Integer succState = probSucc.next();
+                result.add(succState);
+            }
+
+            return result;
+        }
+
+    public Set<Integer> getProbStatesSuccessors(final int probState, List<APElement> word) {
         Set<Integer> current = new LinkedHashSet<Integer>();
         current.add(probState);
 
-        for (Integer symbol : word) {
+        for (APElement symbol : word) {
             Set<Integer> next = new LinkedHashSet<Integer>();
             for (int state : current) {
-                next.addAll(getProbStatesSuccessors(state, symbol.intValue()));
+                next.addAll(getProbStatesSuccessors(state, symbol));
             }
             current = next;
         }
@@ -459,7 +498,8 @@ public class DTMCGFGProduct extends DTMCSimple {
         return current;
     }
 
-    public Set<Integer> getProbStatesSuccessors(Set<Integer> probStates, List<Integer> word) {
+
+    public Set<Integer> getProbStatesSuccessors(Set<Integer> probStates, List<APElement> word) {
         Set<Integer> result = new HashSet<Integer>();
         for (Integer probState : probStates) {
             result.addAll(getProbStatesSuccessors(probState, word));
@@ -470,5 +510,20 @@ public class DTMCGFGProduct extends DTMCSimple {
 
     public int[] getInvMap() {
         return invMap;
+    }
+
+    public DTMCSimple projectToDTMC(){
+        DTMCSimple dtmc = new DTMCSimple(this.getNumStates());
+        for (int from = 0; from < this.getNumStates(); from++) {
+            for (int c = 0; c < getNumChoices(from); c++) {
+                for (Iterator<Map.Entry<Integer, Double>> it = this.getTransitionsIterator(from, c); it.hasNext(); ) {
+                    Map.Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
+                    double value = dtmc.getTransitions(from).get(to);
+                    dtmc.setProbability(from, to, value + probMove.getValue());
+                }
+            }
+        }
+        return dtmc;
     }
 }

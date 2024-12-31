@@ -413,7 +413,7 @@ public class HOAF2NBA implements HOAConsumer {
 
 		NBA nba = parseNBA(input, propertyStore);
 		if (!propertyStore.contains("unambiguous") && !propertyStore.contains("deterministic")) {
-			throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic'");
+			throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic' HERE IN UBA");
 		}
 	
 		return nba;
