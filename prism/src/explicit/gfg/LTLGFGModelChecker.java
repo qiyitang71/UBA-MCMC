@@ -70,14 +70,14 @@ public class LTLGFGModelChecker extends PrismComponent
             StateValues result = new StateValues(TypeDouble.getInstance(), 1);
 
             for (int i : prod.getInitialStates()) {
-                int dtmcState = prod.getDTMCState(i);
+                //int dtmcState = prod.getDTMCState(i);
 
-                Double value = (Double) result.getValue(dtmcState);
+                Double value = (Double) result.getValue(0);
                 if (value == null)
                     value = 0.0;
 
                 value += (Double) prodValues.getValue(i);
-                result.setDoubleValue(dtmcState, value);
+                result.setDoubleValue(0, value);
             }
 
             return result;
@@ -549,8 +549,7 @@ public class LTLGFGModelChecker extends PrismComponent
     }
 
     private void generateBisimilarMap (DTMCGFGProduct product, final BitSet mcc){
-        if(!bisMap.isEmpty()) return;
-        //int s = mcc.nextSetBit(0);
+        bisMap = new HashMap<>();        //int s = mcc.nextSetBit(0);
 
         for (int s : IterableBitSet.getSetBits(mcc)) {
             for(int c = 0; c < product.getNumChoices(s); c++){
@@ -651,8 +650,8 @@ public class LTLGFGModelChecker extends PrismComponent
                                 // ... we extend the word and add to the BFS queue
                                 SharedWord<APElement> curWord = word.append(ap);
 
-                                boolean isLeftBis = (bisMap.get(probState) == null)? false: bisMap.get(probState).get(leftSucc);
-                                boolean isRightBis = (bisMap.get(probState) == null)? false: bisMap.get(probState).get(rightSucc);
+                                boolean isLeftBis = leftSucc == probState || ( (bisMap.get(probState) == null)? false: bisMap.get(probState).get(leftSucc));
+                                boolean isRightBis = rightSucc == probState || ((bisMap.get(probState) == null)? false: bisMap.get(probState).get(rightSucc));
 
 
                                 if ((!isLeftBis  &&(rightSucc == probState && !succsForZ.get(leftSucc).isEmpty()) ||
