@@ -16,14 +16,16 @@ Model checking for GFG and LMC:
 bin/prism -explicit -gfgmc -ubaverbosity 4 ../case-studies/family-of-UBAs/random2.pm -pf 'P=?[ HOA: {"GFGs/gfg-3.hoa", "sigma_0" <- s=0, "pi_0" <- s=1, "hash_0" <- s=2, "dollar_0" <- s=3 }]'
 ```
 
+
+
+## Run Experiments
+#### Case study 1 - family of UBAs in the paper
+
 Run experiments to compare the UBA model checking algorithm and the GFG model checking algorithm:
 ```console
 cd ../case-studies
 ./run.sh
 ```
-
-## Run Experiments
-#### Case study 1 - family of UBAs in the paper
 
 The LMC (in random2.pm) with 4 states generates the first label (sigma) with probablity one and uniform randomly generates the four labels afterwards.
 
