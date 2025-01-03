@@ -48,3 +48,16 @@ Time for checking whether SCC 1 is positive: 240.408 seconds,  (SCC is positive,
 Time for generating cut: 0.099 seconds,  (2 iterations, 7682 extension checks, cut C has 2 states).
 Time for building matrix for positive SCC probabilities, SCC 1: 0.005 seconds.
 Solving SCC 1 probability values...
+Time for solving equation system for positive SCC 1: 240.224 seconds.
+Sum of probabilities for the cut C = 1.0000000000000215 for SCC 1
+Probabilities in SCC 1 are in the range [0.2499999999999509,0.750000000000183]
+Time for computing SCC probabilities for positive SCCs: 480.776 seconds,  (1 positive SCCs, known probabilities for 1280 states).
+Calculating predecessor relation for discrete-time Markov chain...  done (0.002 seconds)
+Time for determining states with probability zero: 0.012 seconds,  (0 zero prob. states, 0 remaining unknown).
+
+Value in the initial state: 1.0000000000000215
+
+Time for model checking: 481.043 seconds.
+
+Result: 1.0000000000000215 (value in the initial state)
+
