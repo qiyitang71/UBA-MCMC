@@ -20,6 +20,7 @@ import acceptance.AcceptanceType;
 import automata.DA;
 import automata.DASimplifyAcceptance;
 import common.IterableBitSet;
+import common.IterableStateSet;
 import common.PathUtil;
 import common.StopWatch;
 import cern.colt.function.IntIntDoubleFunction;
@@ -41,10 +42,13 @@ import explicit.SCCConsumerBSCCs;
 import explicit.SCCConsumerStore;
 import explicit.StateModelChecker;
 import explicit.StateValues;
+import explicit.gfg.DTMCGFGProduct;
+import explicit.gfg.LTL2GFG;
 import jltl2ba.APElement;
 import jltl2ba.APSet;
 import jltl2ba.MyBitSet;
 import jltl2dstar.NBA;
+import jltl2dstar.GFG;
 import jltl2dstar.NBA_State;
 import parser.ast.Expression;
 import parser.type.TypeDouble;
@@ -69,9 +73,9 @@ public class LTLUBAModelChecker extends PrismComponent
 		public DTMCUBAProduct getProduct() {
 			 return prod;
 		}
-		
-		public MyBitSet getFinalStates() {
-			return prod.getFinalStates();
+
+		public HashMap<Integer, MyBitSet> getAccEdges() {
+			return prod.getAccEdges();
 		}
 		
 		public StateValues projectToOriginalModel(DTMC model, StateValues prodValues) throws PrismLangException {
@@ -122,10 +126,10 @@ public class LTLUBAModelChecker extends PrismComponent
 	 * @param labelBS empty vector to be filled with BitSets for subformulas 
 	 * @return the unambiguous NBA
 	 */
-	public NBA constructUBAForLTLFormula(ProbModelChecker mc, DTMC model, Expression expr, Vector<BitSet> labelBS) throws PrismException
+	public GFG constructUBAForLTLFormula(ProbModelChecker mc, DTMC model, Expression expr, Vector<BitSet> labelBS) throws PrismException
 	{
 		Expression ltl;
-		NBA uba;
+		GFG uba;
 		long time;
 
 		if (Expression.containsTemporalRewardBounds(expr)) {
@@ -139,7 +143,7 @@ public class LTLUBAModelChecker extends PrismComponent
 		}
 
 		if (Expression.isHOA(expr)) {
-			LTL2UBA ltl2uba = new LTL2UBA(this);
+			LTL2GFG ltl2uba = new LTL2GFG(this);
 			time = System.currentTimeMillis();
 			mainLog.println("Parsing and constructing HOA automaton for "+expr);
 			Vector<Expression> apExpressions = new Vector<Expression>();
@@ -153,7 +157,9 @@ public class LTLUBAModelChecker extends PrismComponent
 				labelBS.add(labelStates);
 				uba.getAPSet().renameAP(i, "L"+i);
 			}
-			mainLog.println("labelBS: " + labelBS);
+			if(verbosity >= 2) {
+				mainLog.println("labelBS: " + labelBS);
+			}
 
 		} else {
 			// Model check maximal state formulas
@@ -163,7 +169,7 @@ public class LTLUBAModelChecker extends PrismComponent
 			// Convert LTL formula to UBA
 			mainLog.println("\nBuilding unambiguous Buchi automaton (for " + ltl + ")...");
 			time = System.currentTimeMillis();
-			LTL2UBA ltl2uba = new LTL2UBA(this);
+			LTL2GFG ltl2uba = new LTL2GFG(this);
 			uba = ltl2uba.convertLTLFormulaToUBA(ltl, mc.getConstantValues());
 		}
 		mainLog.println("UBA has " + uba.size() + " states.");
@@ -178,7 +184,7 @@ public class LTLUBAModelChecker extends PrismComponent
 			out.close();
 		}
 		
-		isUFA = checkUpwardClosedness(uba) && !settings.getBoolean(PrismSettings.PRISM_UBA_PURE);
+		isUFA = false; //checkUpwardClosedness(uba) && !settings.getBoolean(PrismSettings.PRISM_UBA_PURE);
 		if(isUFA) {
 			mainLog.println("UBA is actually an (upward-closed) UFA");
 		}
@@ -216,7 +222,7 @@ public class LTLUBAModelChecker extends PrismComponent
 	}
 
 	
-	public LTLProduct constructProduct(DTMC model, NBA uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException
+	public LTLProduct constructProduct(DTMC model, GFG uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException
 	{
 		StopWatch timer = new StopWatch(mainLog);
 		timer.start("computing UBA-DTMC product");
@@ -296,22 +302,25 @@ public class LTLUBAModelChecker extends PrismComponent
 		}
 		
 		if (isUFA) {
-			for (int state : IterableBitSet.getSetBits(product.getFinalStates())) {
+			BitSet finalStates = new BitSet(product.getProduct().getNumStates());
+
+			for (int state : product.getAccEdges().keySet()) {
 				// we set the value to 1 for all the known states ( = final states )
 				result.setDoubleValue(state, 1.0);
+				finalStates.set(state);
 			}
 
 			// we calculate all states that can reach a final states, as those have P>0
 			PredecessorRelation pre = product.getProduct().getPredecessorRelation(this, true);
-			BitSet preFinal = pre.calculatePreStar(null, product.getFinalStates(), null);
-			preFinal.andNot(product.getFinalStates());
+			BitSet preFinal = pre.calculatePreStar(null, finalStates, null);
+			preFinal.andNot(finalStates);
 
 			// we determine the reachability probability for reaching the final states
 			// for those states that can reach them
 			if (getSettings().getString(PrismSettings.PRISM_UBA_REACH_METHOD).equals("GS")) {
-				computeReachabilityGS(product, result, product.getFinalStates(), preFinal);
+				computeReachabilityGS(product, result, finalStates, preFinal);
 			} else {
-				computeReachability(product, result, product.getFinalStates(), preFinal);
+				computeReachability(product, result, finalStates, preFinal);
 			}
 		} else {
 			if (!unknownStates.isEmpty()) {
@@ -358,11 +367,25 @@ public class LTLUBAModelChecker extends PrismComponent
 	{
 		StopWatch timer = new StopWatch(mainLog);
 		timer.start("checking whether SCC " + sccIndex + " is positive and computing eigenvector");
-		// first, check that SCC intersects F
-		if (!scc.intersects(product.getFinalStates())) {
-			if (verbosity >= 1) timer.stop(" (SCC is zero, no final state)");
+		// first, check that SCC intersects accepting edges
+		DTMCUBAProduct prod = product.getProduct();
+		HashMap<Integer, MyBitSet>  accEdges = product.getAccEdges();
+		// first, check that MCC intersects accepting edges
+		boolean acc = false;
+		for (int state : new IterableStateSet(scc, prod.getNumStates())) {
+			MyBitSet set = accEdges.get(state);
+			if(set == null) continue;
+			if(scc.intersects(set)){
+				acc = true;
+				break;
+			}
+		}
+
+		if(!acc){
+			if (verbosity >= 1) timer.stop(" (SCC is zero, no accepting edges)");
 			return false;
 		}
+
 
 		StopWatch timerMatrix = new StopWatch(mainLog);
 		timerMatrix.start("building positivity matrix");
@@ -466,7 +489,6 @@ public class LTLUBAModelChecker extends PrismComponent
 			mainLog.println("Cut: " + cut);
 
 			for (Integer cutState : cut) {
-				DTMCUBAProduct prod = product.getProduct();
 				mainLog.print("(" + prod.getDTMCState(cutState) + "," + prod.getUBAState(cutState) +  ")" );
 			}
 			mainLog.println();
@@ -526,11 +548,25 @@ public class LTLUBAModelChecker extends PrismComponent
 	{
 		StopWatch timer = new StopWatch(mainLog);
 		timer.start("checking whether SCC " + sccIndex + " is positive");
-		// first, check that SCC intersects F
-		if (!scc.intersects(product.getFinalStates())) {
-			if (verbosity >= 1) timer.stop(" (SCC is zero, no final state)");
+		// first, check that SCC intersects accepting edges
+		DTMCUBAProduct prod = product.getProduct();
+		HashMap<Integer, MyBitSet>  accEdges = product.getAccEdges();
+		// first, check that MCC intersects accepting edges
+		boolean acc = false;
+		for (int state : new IterableStateSet(scc, prod.getNumStates())) {
+			MyBitSet set = accEdges.get(state);
+			if(set == null) continue;
+			if(scc.intersects(set)){
+				acc = true;
+				break;
+			}
+		}
+
+		if(!acc){
+			if (verbosity >= 1) timer.stop(" (SCC is zero, no accepting edges)");
 			return false;
 		}
+
 
 		StopWatch timerMatrix = new StopWatch(mainLog);
 		timerMatrix.start("building positivity matrix");
@@ -686,7 +722,13 @@ public class LTLUBAModelChecker extends PrismComponent
 		DTMCModelChecker productMc = new DTMCModelChecker(mc);
 		ModelCheckerResult r = productMc.computeReachProbsGaussSeidel(product.getProduct(), no, yes, values, known);
 
-		if (verbosity >= 2) mainLog.println("Solution = " + values);
+		if (verbosity >= 2){
+			mainLog.print("Solution = ");
+			for(int  i= 0; i < values.length; i++){
+				mainLog.print(values[i] + ",");
+			}
+			mainLog.println();
+		}
 
 		for (int i : new IterableBitSet(unknownStates)) {
 			double value = r.soln[i];
@@ -951,7 +993,7 @@ public class LTLUBAModelChecker extends PrismComponent
 		
 		Vector<BitSet> labelBS = new Vector<BitSet>();
 
-		NBA uba = constructUBAForLTLFormula(mc, model, expr, labelBS);
+		GFG uba = constructUBAForLTLFormula(mc, model, expr, labelBS);
 
 		if (!getSettings().getBoolean(PrismSettings.PRISM_UBA_PURE) &&
 		    uba.isDeterministic()) {

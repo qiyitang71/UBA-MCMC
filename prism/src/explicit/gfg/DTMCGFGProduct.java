@@ -285,7 +285,9 @@ public class DTMCGFGProduct extends MDPSimple {
 
         verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
-        mainLog.println("Start constructing product");
+        if(verbosity >= 2) {
+            mainLog.println("Start constructing product");
+        }
 
         ubaSize = uba.getStateCount();
         int numAPs = uba.getAPSize();
@@ -343,15 +345,19 @@ public class DTMCGFGProduct extends MDPSimple {
         // (a) to ensure reachability is done for these states; and
         // (b) to later identify the corresponding product state for the original states
         //     of interest
-        mainLog.println("labelBS: " + labelBS);
-        mainLog.println("labelMap: " + labelMap);
+        if(verbosity >= 2) {
+            mainLog.println("labelBS: " + labelBS);
+            mainLog.println("labelMap: " + labelMap);
+        }
+
 
         int newDtmcInit = dtmc.getNumStates();
         for (int s_0 : new IterableStateSet(statesOfInterest, dtmc.getNumStates())) {
             // Get BitSet representing APs (labels) satisfied by state s_0
-
-            mainLog.println("statesOfInterest: " + statesOfInterest);
-            mainLog.println("s_labels: " + s_labels);
+            if(verbosity >= 2) {
+                mainLog.println("statesOfInterest: " + statesOfInterest);
+                mainLog.println("s_labels: " + s_labels);
+            }
 
             // Find corresponding initial state in DA
             NBA_State ubaStartState = uba.getStartState();
@@ -370,14 +376,16 @@ public class DTMCGFGProduct extends MDPSimple {
                 // Language is empty starting from this DTMC start state -> just skip
                 continue;
             }
-            mainLog.println("LMC state" + s_0 + ", destinations =" + destinations);
+            if(verbosity >= 2) {
+                mainLog.println("LMC state" + s_0 + ", destinations =" + destinations);
+            }
 
             // Add (initial) state to product
             Integer q_0 = ubaStartState.getName();
             queue.add(new Point(newDtmcInit,q_0.intValue()));
             addState();
             addInitialState(getNumStates() - 1);
-            if (verbosity > 2) {
+            if (verbosity >= 2) {
                 mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + newDtmcInit + "," + q_0.intValue() + ")" + " in constructing GFG DTMC product ");
             }
 

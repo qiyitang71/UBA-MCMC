@@ -1,5 +1,3 @@
-
-
 package explicit.uba;
 
 import java.io.FileInputStream;
@@ -22,6 +20,10 @@ import jhoafparser.util.ImplicitEdgeHelper;
 import jltl2ba.APSet;
 import jltl2dstar.APMonom;
 import jltl2dstar.NBA;
+import jltl2dstar.GFG;
+
+
+
 
 
 /**
@@ -41,7 +43,7 @@ import jltl2dstar.NBA;
 public class HOAF2NBA implements HOAConsumer {
 
 	/** The resulting nondeterministic Buechi automaton */
-	private NBA nba;
+	private GFG nba;
 	/** The set of atomic propositions of the automaton (in APSet form) */
 	private APSet aps = new APSet();
 
@@ -197,7 +199,7 @@ public class HOAF2NBA implements HOAConsumer {
 			throw new HOAConsumerException("Can only parse Buchi automaton where acc-name is provided");
 		}
 
-		nba = new NBA(aps);
+		nba = new GFG(aps);
 		for (int i = 0; i< size; i++) {
 			nba.nba_i_newState();
 		}
@@ -237,7 +239,7 @@ public class HOAF2NBA implements HOAConsumer {
 		}
 
 		if (accSignature != null) {
-			throw new HOAConsumerException("NBA has transition-based acceptance (state "+stateId+", currently only state-labeled acceptance is supported");
+			//throw new HOAConsumerException("NBA has transition-based acceptance (state "+stateId+", currently only state-labeled acceptance is supported");
 		}
 
 		int to = conjSuccessors.get(0);
@@ -339,7 +341,8 @@ public class HOAF2NBA implements HOAConsumer {
 		}
 
 		if (accSignature != null) {
-			throw new HOAConsumerException("NBA has transition-based acceptance (state "+stateId+", currently only state-labeled acceptance is supported");
+			//throw new HOAConsumerException("NBA has transition-based acceptance (state "+stateId+", currently only state-labeled acceptance is supported");
+			//we want transition-based acceptance
 		}
 
 		if (labelExpr == null) {
@@ -350,6 +353,9 @@ public class HOAF2NBA implements HOAConsumer {
 
 		for (APMonom monom : labelExpressionToAPMonom(labelExpr)) {
 			nba.nba_i_addEdge(stateId, monom, to);
+			if(accSignature != null){
+				nba.addAccEdge(stateId,monom,to);
+			}
 		}
 	}
 
@@ -370,7 +376,7 @@ public class HOAF2NBA implements HOAConsumer {
 		
 	}
 	
-	public NBA getNBA() {
+	public GFG getNBA() {
 		return nba;
 	}
 	
@@ -392,7 +398,7 @@ public class HOAF2NBA implements HOAConsumer {
 	 * @param propertyStore a Set for receiving the properties of the automaton (may be {@code null})
 	 * @return the automaton
 	 */
-	public static NBA parseNBA(InputStream input, Set<String> propertyStore) throws ParseException {
+	public static GFG parseNBA(InputStream input, Set<String> propertyStore) throws ParseException {
 		HOAF2NBA consumerNBA = new HOAF2NBA();
 		HOAFParser.parseHOA(input, consumerNBA);
 		
@@ -408,10 +414,10 @@ public class HOAF2NBA implements HOAConsumer {
 	 * @param input the input stream
 	 * @return the automaton
 	 */
-	public static NBA parseUBA(InputStream input) throws ParseException {
+	public static GFG parseUBA(InputStream input) throws ParseException {
 		Set<String> propertyStore = new TreeSet<String>();
 
-		NBA nba = parseNBA(input, propertyStore);
+		GFG nba = parseNBA(input, propertyStore);
 		if (!propertyStore.contains("unambiguous") && !propertyStore.contains("deterministic")) {
 			throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic' HERE IN UBA");
 		}
@@ -444,7 +450,7 @@ public class HOAF2NBA implements HOAConsumer {
 			}
 
 			Set<String> properties = new TreeSet<String>();
-			NBA result = parseNBA(input, properties);
+			GFG result = parseNBA(input, properties);
 			if (result == null) {
 				throw new PrismException("Could not construct NBA");
 			}
@@ -458,7 +464,7 @@ public class HOAF2NBA implements HOAConsumer {
 			for (String p : properties) {
 				output.println(p);
 			}
-			output.println(result.getFinalStates());
+			output.println(result.getAccEdges());
 
 		} catch (Exception e) {
 			System.err.println(e.toString());

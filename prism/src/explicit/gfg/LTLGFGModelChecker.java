@@ -1,18 +1,8 @@
 package explicit.gfg;
 
 import java.io.PrintStream;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.Set;
-import java.util.Vector;
 
 import acceptance.AcceptanceOmega;
 import acceptance.AcceptanceReach;
@@ -370,7 +360,10 @@ public class LTLGFGModelChecker extends PrismComponent
             for(APElement ap: set){
                 for(int i = 0; i < prod.getNumChoices(state);i++) {
                     if(!prod.getAction(state, i).equals(ap)) continue;
-                    acc = acc || prod.allSuccessorsInSet(state, i, mcc);
+                    if(prod.allSuccessorsInSet(state, i, mcc)){
+                        acc = true;
+                        break;
+                    }
                 }
             }
         }
@@ -432,7 +425,7 @@ public class LTLGFGModelChecker extends PrismComponent
         Algebra algebra = new Algebra();
         DoubleMatrix2D B = new DenseDoubleMatrix2D(matrix.rows(), 1);
         B.setQuick(matrix.rows()-1, 0, 1);
-        if (verbosity >= 2) //mainLog.println("B = \n" + B);
+        //if (verbosity >= 2) mainLog.println("B = \n" + B);
 
         if (verbosity >= 1) timer.stop();
 
@@ -536,7 +529,13 @@ public class LTLGFGModelChecker extends PrismComponent
         DTMCModelChecker productMc = new DTMCModelChecker(mc);
         ModelCheckerResult r = productMc.computeReachProbsGaussSeidel(product.getProduct().projectToDTMC(), no, yes, values, known);
 
-        if (verbosity >= 2) mainLog.println("Solution = " + values);
+        if (verbosity >= 2){
+            mainLog.print("Solution = ");
+            for(int  i= 0; i < values.length; i++){
+                mainLog.print(values[i] + ",");
+            }
+            mainLog.println();
+        }
 
         for (int i : new IterableBitSet(unknownStates)) {
             double value = r.soln[i];
@@ -565,7 +564,9 @@ public class LTLGFGModelChecker extends PrismComponent
                 }
             }
         }
-        mainLog.println("bisMap = " + bisMap);
+        if(verbosity >= 2) {
+            mainLog.println("bisMap = " + bisMap);
+        }
     }
 
         private Set<Integer> generateCut(DTMCGFGProduct product, final int probState, final BitSet mcc) throws PrismException  {

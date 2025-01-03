@@ -37,10 +37,12 @@ import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismLog;
 import prism.PrismSettings;
+import jltl2dstar.GFG;
 
 public class DTMCUBAProduct extends DTMCSimple {
+	protected HashMap<Integer, MyBitSet> accEdges;
 
-	protected MyBitSet finalStates;
+	//protected MyBitSet finalStates;
 	protected int ubaSize;
 	protected int invMap[];
 
@@ -82,13 +84,15 @@ public class DTMCUBAProduct extends DTMCSimple {
 		return invMap[prodState]  % ubaSize;
 	}
 
-	public DTMCUBAProduct(PrismComponent parent, DTMC dtmc, NBA uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
+	public DTMCUBAProduct(PrismComponent parent, DTMC dtmc, GFG uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
 		this.mainLog = parent.getLog();
 		this.settings = parent.getSettings();
 
 		verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
-		mainLog.println("Start constructing product");
+		if(verbosity >= 2) {
+			mainLog.println("Start constructing product");
+		}
 
 		ubaSize = uba.getStateCount();
 		int numAPs = uba.getAPSize();
@@ -186,7 +190,8 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 					// Find corresponding successor in UBA
 					NBA_State ubaState = uba.get(q_1);
-					MyBitSet destinations = ubaState.getEdge(new APElement(s_labels));
+					APElement ap = new APElement(s_labels);
+					MyBitSet destinations = ubaState.getEdge(ap);
 					for(Iterator<Integer> ubaStatesIterator = destinations.iterator(); ubaStatesIterator.hasNext();) {
 						q_2 = ubaStatesIterator.next();
 						if (q_2 < 0) {
@@ -198,6 +203,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 							//Create probabilistic state
 							addState();
 							map[s_2*ubaSize + q_2] = getNumStates() - 1;
+
 							if (prodStatesList != null) {
 								// Store state information for the product
 								prodStatesList.add(dtmc.getStatesList().get(s_2));
@@ -228,13 +234,30 @@ public class DTMCUBAProduct extends DTMCSimple {
 		//mainLog.println("Converting product model to MDPSparse");
 
 		//Lift acceptance condition
-		finalStates = new MyBitSet(getNumStates());
+		accEdges = new HashMap<>();
+
 		for(int i = 0; i < getNumStates(); i++) {
 			int q = getUBAState(i);
-			finalStates.set(i, uba.getFinalStates().get(q));
+			//APSet apset = new APSet();
+
+			if(uba.getAccEdges().get(q) != null) {
+				Set<APElement> apset = uba.getAccEdges().get(q).keySet();
+				for(APElement ap: apset){
+					int letter = Integer.parseInt(uba.getAPSet().getAP(ap.nextSetBit(0)).substring(1));
+					Set<Integer> succs = getProbStatesSuccessors(i, letter);
+					if(accEdges.get(i)!=null){
+						for(int ns : succs) accEdges.get(i).set(ns);
+					}else{
+						MyBitSet myBitSet = new MyBitSet(this.numStates);
+						for(int ns : succs) myBitSet.set(ns);
+						accEdges.put(i, myBitSet);
+					}
+				}
+
+			}
 		}
 		if(verbosity >= 2) {
-			mainLog.println("Final states: " + finalStates);
+			mainLog.println("Accepting transitions: " + accEdges);
 		}
 
 		//final LTLProduct<M> product = new LTLProduct<M>(productModel, dtmc, null, daSize, invMap);;
@@ -252,16 +275,19 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 	}
 
-	public MyBitSet getFinalStates() {
-		return finalStates;
-	}
+//	public MyBitSet getFinalStates() {
+//		return finalStates;
+//	}
+	public HashMap<Integer, MyBitSet> getAccEdges() {
+	return accEdges;
+}
 
 	public String SCC2Octave(BitSet scc) {
 		String result = " A = [";
 		int size = 0;
 		Map<Integer,Integer> map = new HashMap<Integer,Integer>();
 		for(int i = scc.nextSetBit(0); i >= 0; i = scc.nextSetBit(i+1)) {
-			map.put(new Integer(i), new Integer(size));
+			map.put(i, size);
 			size++;
 		}
 
@@ -273,7 +299,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 				for(Iterator<Integer> succIt = getSuccessorsIterator(nonDetState); succIt.hasNext();) {
 					int succ = succIt.next();
 					if(scc.get(succ)) {
-						pseudoDistribution[map.get(new Integer(succ))] = entry.getValue();
+						pseudoDistribution[map.get(succ)] = entry.getValue();
 					}
 				}
 			}
