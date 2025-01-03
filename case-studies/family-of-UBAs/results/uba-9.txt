@@ -1,0 +1,50 @@
+PRISM
+=====
+
+Version: 4.4.dev
+Date: Fri Jan 03 18:18:57 GMT 2025
+Hostname: Qiyis-Air.home
+Memory limits: cudd=1g, java(heap)=1g
+Command line: prism -explicit -ltluba -ubaverbosity 1 random2.pm -pf 'P=?[ HOA: {"UBAs/uba-9.hoa", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2, "dollar" <- s=3}]'
+
+Parsing model file "random2.pm"...
+
+1 property:
+(1) P=? [ HOA: { "UBAs/uba-9.hoa", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2, "dollar" <- s=3 } ]
+
+Type:        DTMC
+Modules:     random 
+Variables:   s 
+
+---------------------------------------------------------------------
+
+Model checking: P=? [ HOA: { "UBAs/uba-9.hoa", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2, "dollar" <- s=3 } ]
+
+Building model...
+
+Computing reachable states... 4 states
+Reachable states exploration and model construction done in 0.01 secs.
+Sorting reachable states list...
+
+Time for model construction: 0.017 seconds.
+
+Type:        DTMC
+States:      4 (1 initial)
+Transitions: 16
+Parsing and constructing HOA automaton for HOA: { "UBAs/uba-9.hoa", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2, "dollar" <- s=3 }
+Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/case-studies/family-of-UBAs/UBAs/uba-9.hoa...
+Determining states satisfying atomic proposition expressions of the automaton...
+UBA has 511 states.
+Time for UBA translation: 0.173 seconds.
+statesOfInterest: {0}
+s_labels: {0}
+LMC state0, destinations ={0, 2}
+Time for computing UBA-DTMC product: 0.049 seconds,  (product has 1280 states).
+Time for computing SCC in UBA-DTMC product: 0.016 seconds,  (found 1 non-trivial SCCs).
+
+SCC 1 has 1280 states
+Time for building positivity matrix: 0.029 seconds.
+Time for checking whether SCC 1 is positive: 240.408 seconds,  (SCC is positive, checked via QR).
+Time for generating cut: 0.099 seconds,  (2 iterations, 7682 extension checks, cut C has 2 states).
+Time for building matrix for positive SCC probabilities, SCC 1: 0.005 seconds.
+Solving SCC 1 probability values...

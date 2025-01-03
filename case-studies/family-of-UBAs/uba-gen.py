@@ -20,7 +20,8 @@ Accepting transition are all labelled with 0.
 def findSuccessor(state, letter, N): #gives list of successor states on reading letter from state
 	if letter == 0: # sigma
 		assert(state != 0)
-		return([0,(state & 1)*(2**(N-1))|(state >> 1)])
+		return([0,((state >> N-1)&1)|(2**(N)-1)&(state << 1)])
+		#return([0,(state & 1)*(2**(N-1))|(state >> 1)])
 
 	elif letter == 1: #pi
 		assert(state != 0)
@@ -50,10 +51,13 @@ def labelGenerator(letter):
 	label = " & ".join(labelValues)
 	return(label)
 
+def countBit(n: int) -> int:
+    return sum(b == '1' for b in bin(n))
+    
 def ubaGenerator(N):
-	with open(f"uba-family-trans-acc-{N}.hoa",'w') as file:
+	with open(f"UBAs/uba-{N}.hoa",'w') as file:
 		file.write(f"HOA: v1\n")
-		file.write(f"name: \"uba-family-trans-acc-{N}\"\n")
+		file.write(f"name: \"uba-{N}\"\n")
 		NO_OF_STATES = 2**N -1
 		file.write(f"States: {NO_OF_STATES}\n")
 		file.write(f"Start: 1\n")
@@ -65,13 +69,15 @@ def ubaGenerator(N):
 		for state in range(NO_OF_STATES):
 			file.write(f"State: {state}\n")
 			if state == 0:
-				file.write(f"  [{labelGenerator(3)}] 0 {0}\n")
-				file.write(f"  [{labelGenerator(3)}] 1 {0}\n")
+				file.write(f"  [{labelGenerator(3)}] 0 ")
+				file.write("{0}\n")
+				file.write(f"  [{labelGenerator(3)}] 1 ")
+				file.write("{0}\n")
 			else:
 				for letter in range(3):
 					for successor in findSuccessor(state, letter, N):
 						file.write(f"  [{labelGenerator(letter)}] {successor} ")
-						if letter in [2,3] or successor == 0:
+						if (countBit(state) != countBit(successor) and letter == 2) or (successor == 0) or (letter == 3):
 							file.write("{0}\n")
 						else:
 							file.write("\n")

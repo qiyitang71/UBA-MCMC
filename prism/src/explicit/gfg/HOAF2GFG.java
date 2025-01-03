@@ -418,9 +418,9 @@ public class HOAF2GFG implements HOAConsumer {
         Set<String> propertyStore = new TreeSet<String>();
 
         GFG nba = parseNBA(input, propertyStore);
-        if (!propertyStore.contains("unambiguous") && !propertyStore.contains("deterministic")) {
-            throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic' HERE IN GFG");
-        }
+//        if (!propertyStore.contains("unambiguous") && !propertyStore.contains("deterministic")) {
+//            throw new ParseException("Automaton is required to be marked as 'unambiguous' or 'deterministic' HERE IN GFG");
+//        }
 
         return nba;
     }

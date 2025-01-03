@@ -38,7 +38,7 @@ def findSuccessor(state, letter, N): #gives list of successor states on reading 
 		return([N])
 
 	elif letter == 4: # <sigma,1> 
-		return([(N+1)%N])
+		return([(state+1)%N])
 
 	elif letter == 5: #<pi,1>
 		if state > 1:
@@ -65,15 +65,15 @@ def labelGenerator(letter):
 	return(label)
 
 def gfgGenerator(N):
-	with open(f"gfg-family-trans-acc-{N}.hoa",'w') as file:
+	with open(f"GFGs/gfg-{N}.hoa",'w') as file:
 		file.write(f"HOA: v1\n")
-		file.write(f"name: \"gfg-family-trans-acc-{N}\"\n")
+		file.write(f"name: \"gfg-{N}\"\n")
 		NO_OF_STATES = N+2
 		file.write(f"States: {NO_OF_STATES}\n")
 		file.write(f"Start: 0\n")
 		file.write(f"acc-name: Buchi\n")
 		file.write(f"Acceptance: 1 Inf(0)\n") #each acc transition is given label 0
-		file.write("AP: 8 \"sigma 0\" \"pi 0\" \"hash 0\" \"dollar 0\" \"sigma 1\" \"pi 1\" \"hash 1\" \"dollar 1\"\n")
+		file.write("AP: 8 \"sigma_0\" \"pi_0\" \"hash_0\" \"dollar_0\" \"sigma_1\" \"pi_1\" \"hash_1\" \"dollar_1\"\n")
 		file.write("properties: trans-labels explicit-labels trans-acc\n")
 		file.write(f"--BODY--\n")
 		for state in range(NO_OF_STATES):
@@ -82,6 +82,8 @@ def gfgGenerator(N):
 				for successor in findSuccessor(state, letter, N):
 					file.write(f"  [{labelGenerator(letter)}] {successor} ")
 					if (state,letter) in [(0,6), (N,3),(N,7)]:
+						file.write("{0}\n")
+					elif successor == N:
 						file.write("{0}\n")
 					else:
 						file.write("\n")
