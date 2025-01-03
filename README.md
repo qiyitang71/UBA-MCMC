@@ -23,7 +23,7 @@ bin/prism -explicit -gfgmc -ubaverbosity 4 ../case-studies/family-of-UBAs/random
 
 Run experiments to compare the UBA model checking algorithm and the GFG model checking algorithm:
 ```console
-cd ../case-studies
+cd ../case-studies/family-of-UBAs/
 ./run.sh
 ```
 
