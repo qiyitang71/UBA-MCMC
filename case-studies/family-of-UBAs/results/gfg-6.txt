@@ -18,17 +18,14 @@ Now normalise DCA
 Computing subsafe language equivalence
 Now safe cetralise DCA
 Now safe minimise DCA
-
-real	0m0.118s
-user	0m0.065s
-sys	0m0.010s
+0.047
 
 
 PRISM
 =====
 
 Version: 4.4.dev
-Date: Sun Jan 05 15:35:55 GMT 2025
+Date: Sun Jan 05 16:28:41 GMT 2025
 Hostname: Qiyis-Air.home
 Memory limits: cudd=1g, java(heap)=1g
 Command line: prism -explicit -gfgmc -ubaverbosity 1 random2.pm -pf 'P=?[ HOA: {"GFGs/gfg-6.hoa", "sigma_0" <- s=0, "pi_0" <- s=1, "hash_0" <- s=2, "dollar_0" <- s=3 }]'
@@ -49,10 +46,10 @@ Model checking: P=? [ HOA: { "GFGs/gfg-6.hoa", "sigma_0" <- s=0, "pi_0" <- s=1, 
 Building model...
 
 Computing reachable states... 4 states
-Reachable states exploration and model construction done in 0.01 secs.
+Reachable states exploration and model construction done in 0.011 secs.
 Sorting reachable states list...
 
-Time for model construction: 0.016 seconds.
+Time for model construction: 0.019 seconds.
 
 Type:        DTMC
 States:      4 (1 initial)
@@ -62,36 +59,36 @@ Parsing and constructing HOA automaton for HOA: { "GFGs/gfg-6.hoa", "sigma_0" <-
 Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/case-studies/family-of-UBAs/GFGs/gfg-6.hoa...
 Determining states satisfying atomic proposition expressions of the automaton...
 GFG has 8 states.
-Time for GFG translation: 0.044 seconds.
+Time for GFG translation: 0.053 seconds.
 Start constructing product
 labelBS: [{0}, {}, {1}, {}, {2}, {}, {3}, {}]
 labelMap: {0=[0, 1], 1=[0, 1], 2=[2, 3], 3=[2, 3], 4=[4, 5], 5=[4, 5], 6=[6, 7], 7=[6, 7]}
 statesOfInterest: {0}
 s_labels: {}
 LMC state0, destinations ={0, 2}
-Time for computing GFG-DTMC product: 0.024 seconds,  (product has 32 states).
-Time for computing MCC in GFG-DTMC product: 0.007 seconds,  (found 2 non-trivial MCCs).
+Time for computing GFG-DTMC product: 0.025 seconds,  (product has 32 states).
+Time for computing MCC in GFG-DTMC product: 0.006 seconds,  (found 2 non-trivial MCCs).
 
 MCC 1 has 4 states
 Time for checking whether MCC 1 is positive: 0.0 seconds,  (MCC is zero, no accepting edges).
 
 MCC 2 has 19 states
-Time for building positivity matrix: 0.013 seconds.
+Time for building positivity matrix: 0.015 seconds.
 Time for checking whether MCC 2 is positive: 0.032 seconds,  (MCC is positive, checked via QR).
-Time for generating cut: 0.163 seconds,  (2 iterations, 5784 extension checks, cut tempC has 19 states).
-Time for generating cut: 1.736091355454E9 seconds,  (2 iterations, 5784 extension checks, cut C has 4 states).
+Time for generating cut: 0.172 seconds,  (2 iterations, 5784 extension checks, cut tempC has 19 states).
+Time for generating cut: 1.736094522093E9 seconds,  (2 iterations, 5784 extension checks, cut C has 4 states).
 Time for building matrix for positive MCC probabilities, MCC 2: 0.007 seconds.
 Solving MCC 2 probability values...
-Time for solving equation system for positive MCC 2: 0.002 seconds.
+Time for solving equation system for positive MCC 2: 0.003 seconds.
 Sum of probabilities for the cut C = 0.9999999999999996 for MCC 2
 Probabilities in MCC 2 are in the range [0.2499999999999996,0.25000000000000044]
-Time for computing MCC probabilities for positive MCCs: 0.225 seconds,  (1 positive MCCs, known probabilities for 19 states).
-Calculating predecessor relation for Markov decision process...  done (0.006 seconds)
-Time for determining states with probability zero: 0.009 seconds,  (13 zero prob. states, 0 remaining unknown).
+Time for computing MCC probabilities for positive MCCs: 0.233 seconds,  (1 positive MCCs, known probabilities for 19 states).
+Calculating predecessor relation for Markov decision process...  done (0.005 seconds)
+Time for determining states with probability zero: 0.008 seconds,  (13 zero prob. states, 0 remaining unknown).
 
 Value in the initial state: 0.2499999999999996
 
-Time for model checking: 0.322 seconds.
+Time for model checking: 0.338 seconds.
 
 Result: 0.2499999999999996 (value in the initial state)
 
