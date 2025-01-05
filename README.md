@@ -42,3 +42,20 @@ We report the number of states of the automata, the number of states of the prod
 | k=8 | #states = 255, #product = 640, time = 34.586 s   | #states = 10, #product = 34, time = 0.284 s   |
 | k=9 | #states = 511, #product = 1280, time = 481.043 s| #states = 11, #product = 37, time = 0.309 s   |
 | k=10 |#states = 1023, #product = 2560, timeout   | #states = 12, #product = 40, time = 0.365 s   |
+
+***UPDATE*** Rerun the experiments after installing Yong's UBA to minimal GCA tool:
+```console
+./run2.sh
+```
+
+We report the number of states of the automata, the number of states of the product and the running time.
+|         | UBA   | GFG   | 
+| :---:   | :---: | :---: |
+| k=3 | #states = 7, #product = 20, time = 0.142 s| #states = 5, #product = 20, total_time = 0.315 s: 0.062 (trans), 0.253 (mc) |
+| k=4 | #states = 15, #product = 40, time = 0.135 s   | #states = 6, #product = 24, total_time = 0.332 s: 0.054 (trans), 0.278 (mc)  |
+| k=5 | #states = 31, #product = 80, time = 0.24 s   |#states = 7, #product = 28, total_time = 0.384 s: 0.063 (trans), 0.321 (mc)   |
+| k=6 | #states = 63, #product = 160, time = 0.502 s   | #states = 8, #product = 32, total_time = 0.385 s: 0.047 (trans), 0.338 (mc)   |
+| k=7 | #states = 127, #product = 320, time = 2.948 s   | #states = 9, #product = 36, total_time = 0.554 s: 0.154 (trans), 0.4 (mc)   |
+| k=8 | #states = 255, #product = 640, time = 34.765 s   | #states = 10, #product = 40, total_time = 0.972 s: 0.541 (trans), 0.431 (mc)   |
+| k=9 | #states = 511, #product = 1280, time = 487.233 s| #states = 11, #product = 44, total_time = 2.415 s: 1.982 (trans), 0.433 (mc)   |
+| k=10 |#states = 1023, #product = 2560, timeout   | #states = 12, #product = 48, total_time = 8.159 s: 7.711 (trans), 0.448 (mc)|
