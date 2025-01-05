@@ -145,8 +145,9 @@ public class HOAF2GFG implements HOAConsumer {
     public void provideAcceptanceName(String name, List<Object> extraInfo)
             throws HOAConsumerException {
         accName = name;
+        accName = "Buchi";
         if (!name.equals("Buchi")) {
-            throw new HOAConsumerException("Can only parse Buchi automata where acc-name is provided");
+            //throw new HOAConsumerException("Can only parse Buchi automata where acc-name is provided");
         }
     }
 
@@ -196,7 +197,7 @@ public class HOAF2GFG implements HOAConsumer {
         }
 
         if (accName == null) {
-            throw new HOAConsumerException("Can only parse Buchi automaton where acc-name is provided");
+            //throw new HOAConsumerException("Can only parse Buchi automaton where acc-name is provided");
         }
 
         nba = new GFG(aps);

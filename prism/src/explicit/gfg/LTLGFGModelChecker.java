@@ -60,14 +60,14 @@ public class LTLGFGModelChecker extends PrismComponent
             StateValues result = new StateValues(TypeDouble.getInstance(), 1);
 
             for (int i : prod.getInitialStates()) {
-                //int dtmcState = prod.getDTMCState(i);
+                int dtmcState = prod.getDTMCState(i);
 
-                Double value = (Double) result.getValue(0);
+                Double value = (Double) result.getValue(dtmcState);
                 if (value == null)
                     value = 0.0;
 
                 value += (Double) prodValues.getValue(i);
-                result.setDoubleValue(0, value);
+                result.setDoubleValue(dtmcState, value);
             }
 
             return result;
@@ -566,6 +566,12 @@ public class LTLGFGModelChecker extends PrismComponent
         }
         if(verbosity >= 2) {
             mainLog.println("bisMap = " + bisMap);
+            for(int i: bisMap.keySet()){
+                mainLog.print(i + " == " );
+                for(Integer j: IterableBitSet.getSetBits(bisMap.get(i))){
+                    mainLog.print( j + "(" +product.getDTMCState(j)+ "," + product.getUBAState(j) + ")" );
+                }
+            }
         }
     }
 
