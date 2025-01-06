@@ -4,7 +4,7 @@ PRISM
 =====
 
 Version: 4.4.dev
-Date: Sun Jan 05 16:28:50 GMT 2025
+Date: Mon Jan 06 17:18:09 GMT 2025
 Hostname: Qiyis-Air.home
 Memory limits: cudd=1g, java(heap)=1g
 Command line: prism -explicit -ltluba -ubaverbosity 1 random2.pm -pf 'P=?[ HOA: {"UBAs/uba-8.hoa", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2, "dollar" <- s=3}]'
@@ -25,10 +25,10 @@ Model checking: P=? [ HOA: { "UBAs/uba-8.hoa", "sigma" <- s=0, "pi" <- s=1, "has
 Building model...
 
 Computing reachable states... 4 states
-Reachable states exploration and model construction done in 0.01 secs.
+Reachable states exploration and model construction done in 0.023 secs.
 Sorting reachable states list...
 
-Time for model construction: 0.017 seconds.
+Time for model construction: 0.04 seconds.
 
 Type:        DTMC
 States:      4 (1 initial)
@@ -37,29 +37,29 @@ Parsing and constructing HOA automaton for HOA: { "UBAs/uba-8.hoa", "sigma" <- s
 Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/case-studies/family-of-UBAs/UBAs/uba-8.hoa...
 Determining states satisfying atomic proposition expressions of the automaton...
 UBA has 255 states.
-Time for UBA translation: 0.103 seconds.
+Time for UBA translation: 0.118 seconds.
 statesOfInterest: {0}
 s_labels: {0}
 LMC state0, destinations ={0, 2}
-Time for computing UBA-DTMC product: 0.063 seconds,  (product has 640 states).
-Time for computing SCC in UBA-DTMC product: 0.008 seconds,  (found 1 non-trivial SCCs).
+Time for computing UBA-DTMC product: 0.089 seconds,  (product has 640 states).
+Time for computing SCC in UBA-DTMC product: 0.014 seconds,  (found 1 non-trivial SCCs).
 
 SCC 1 has 640 states
-Time for building positivity matrix: 0.023 seconds.
-Time for checking whether SCC 1 is positive: 17.225 seconds,  (SCC is positive, checked via QR).
-Time for generating cut: 0.069 seconds,  (2 iterations, 3833 extension checks, cut C has 2 states).
-Time for building matrix for positive SCC probabilities, SCC 1: 0.005 seconds.
+Time for building positivity matrix: 0.043 seconds.
+Time for checking whether SCC 1 is positive: 24.611 seconds,  (SCC is positive, checked via QR).
+Time for generating cut: 0.116 seconds,  (2 iterations, 3833 extension checks, cut C has 2 states).
+Time for building matrix for positive SCC probabilities, SCC 1: 0.008 seconds.
 Solving SCC 1 probability values...
-Time for solving equation system for positive SCC 1: 17.239 seconds.
+Time for solving equation system for positive SCC 1: 29.437 seconds.
 Sum of probabilities for the cut C = 1.0000000000000087 for SCC 1
 Probabilities in SCC 1 are in the range [0.24999999999998296,0.7500000000000637]
-Time for computing SCC probabilities for positive SCCs: 34.558 seconds,  (1 positive SCCs, known probabilities for 640 states).
-Calculating predecessor relation for discrete-time Markov chain...  done (0.001 seconds)
-Time for determining states with probability zero: 0.008 seconds,  (0 zero prob. states, 0 remaining unknown).
+Time for computing SCC probabilities for positive SCCs: 54.209 seconds,  (1 positive SCCs, known probabilities for 640 states).
+Calculating predecessor relation for discrete-time Markov chain...  done (0.004 seconds)
+Time for determining states with probability zero: 0.012 seconds,  (0 zero prob. states, 0 remaining unknown).
 
 Value in the initial state: 1.0000000000000087
 
-Time for model checking: 34.765 seconds.
+Time for model checking: 54.493 seconds.
 
 Result: 1.0000000000000087 (value in the initial state)
 

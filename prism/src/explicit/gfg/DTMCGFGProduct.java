@@ -1,20 +1,8 @@
 package explicit.gfg;
 
 import java.awt.Point;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.Vector;
 
 import cern.colt.matrix.DoubleMatrix2D;
 import cern.colt.matrix.impl.DenseDoubleMatrix2D;
@@ -53,6 +41,8 @@ public class DTMCGFGProduct extends MDPSimple {
 
     private APSet actions;
     //public DTMCUBAProduct dtmcProduct;
+    HashMap<Integer, BitSet>  equivDTMC;
+    HashMap<Integer, BitSet> equivGFG;
 
     private DoubleMatrix2D newMatrix(int rows, int columns) {
         switch (matrixType) {
@@ -85,266 +75,299 @@ public class DTMCGFGProduct extends MDPSimple {
         return invMap[prodState]  % ubaSize;
     }
 
-public DTMCGFGProduct(PrismComponent parent, DTMC dtmc, GFG uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
-    this.mainLog = parent.getLog();
-    this.settings = parent.getSettings();
-
-    verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
-
-    mainLog.println("Start constructing product");
-
-    ubaSize = uba.getStateCount();
-    int numAPs = uba.getAPSize();
-    int modelNumStates = dtmc.getNumStates();
-    int prodNumStates = modelNumStates * ubaSize;
-    int s_1, s_2, q_1, q_2;
-    MyBitSet s_labels = new MyBitSet(numAPs);
-    List<State> prodStatesList = null;
-
-    VarList newVarList = null;
-
-    if (dtmc.getVarList() != null) {
-        newVarList = (VarList) dtmc.getVarList().clone();
+    public HashMap<Integer, BitSet>  getEquivDTMCStates(){
+        return equivDTMC;
+    }
+    public HashMap<Integer, BitSet> getEquivGFG(){
+        return equivGFG;
     }
 
-    // Create a (simple, mutable) model of the appropriate type
-    setVarList(newVarList);
+    public DTMCGFGProduct(PrismComponent parent, DTMC dtmc, GFG uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
+        this.mainLog = parent.getLog();
+        this.settings = parent.getSettings();
 
-    // Encoding:
-    // each probabiblistic state s' = <s, q> = 2*(s * ubaSize + q)
-    // each nondeterministic state s' = <s, q> = 2*(s * ubaSize + q) + 1
-    // s(s') = s' / (2*ubaSize)
-    // q(s') = (s'-1) % (2*ubaSize)
+        verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
-    LinkedList<Point> queue = new LinkedList<Point>();
-    int map[] = new int[prodNumStates];
-    Arrays.fill(map, -1);
-
-    if (dtmc.getStatesList() != null) {
-        prodStatesList = new ArrayList<State>();
-    }
-
-    //check which APs are projected to the same original letter
-    Map<String, Set<Integer>> labelStringMap = new HashMap<>();
-    for (int k = 0; k < numAPs; k++) {
-        String key = uba.getAPSet().getAP(k).split("_")[0];
-        if(labelStringMap.containsKey(key)){
-            labelStringMap.get(key).add(k);
-        }else{
-            Set<Integer> set = new HashSet<>();
-            set.add(k);
-            labelStringMap.put(key,set);
+        if (verbosity >= 2) {
+            mainLog.println("Start constructing product");
         }
-    }
 
-    Map<Integer, Set<Integer>> labelMap = new HashMap<>();
-    for (int k = 0; k < numAPs; k++) {
-        String key = uba.getAPSet().getAP(k).split("_")[0];
-        labelMap.put(k, labelStringMap.get(key));
-    }
+        ubaSize = uba.getStateCount();
+        int numAPs = uba.getAPSize();
+        int modelNumStates = dtmc.getNumStates() + 1;
+        int prodNumStates = modelNumStates * ubaSize;
+        int s_1, s_2, q_1, q_2;
+        MyBitSet s_labels = new MyBitSet(numAPs);
+        List<State> prodStatesList = null;
 
-    // We need results for all states of the original model in statesOfInterest
-    // We thus explore states of the product starting from these states.
-    // These are designated as initial states of the product model
-    // (a) to ensure reachability is done for these states; and
-    // (b) to later identify the corresponding product state for the original states
-    //     of interest
-    mainLog.println("labelBS: " + labelBS);
-    mainLog.println("labelMap: " + labelMap);
+        VarList newVarList = null;
 
-    for (int s_0 : new IterableStateSet(statesOfInterest, dtmc.getNumStates())) {
-        // Get BitSet representing APs (labels) satisfied by state s_0
+        if (dtmc.getVarList() != null) {
+            newVarList = (VarList) dtmc.getVarList().clone();
+        }
 
-        mainLog.println("statesOfInterest: " + statesOfInterest);
-        mainLog.println("s_labels: " + s_labels);
+        // Create a (simple, mutable) model of the appropriate type
+        setVarList(newVarList);
 
-        // Find corresponding initial state in DA
-        NBA_State ubaStartState = uba.getStartState();
-        MyBitSet destinations = new MyBitSet(uba.size());
+        // Encoding:
+        // each probabiblistic state s' = <s, q> = 2*(s * ubaSize + q)
+        // each nondeterministic state s' = <s, q> = 2*(s * ubaSize + q) + 1
+        // s(s') = s'/ (ubaSize)
+        // q(s') = (s') % (ubaSize)
+
+        LinkedList<Point> queue = new LinkedList<Point>();
+        int map[] = new int[prodNumStates];
+        Arrays.fill(map, -1);
+
+        if (dtmc.getStatesList() != null) {
+            prodStatesList = new ArrayList<State>();
+        }
+
+        //check which APs are projected to the same original letter
+        Map<String, Set<Integer>> labelStringMap = new HashMap<>();
         for (int k = 0; k < numAPs; k++) {
+            String key = uba.getAPSet().getAP(k).split("_")[0];
+            if (labelStringMap.containsKey(key)) {
+                labelStringMap.get(key).add(k);
+            } else {
+                Set<Integer> set = new HashSet<>();
+                set.add(k);
+                labelStringMap.put(key, set);
+            }
+        }
 
-            if(!labelBS.get(k).isEmpty()) {
-                for (int k2 : labelMap.get(k)) {
-                    MyBitSet s_labels2 = new MyBitSet(numAPs);
-                    s_labels2.set(k2, labelBS.get(k).get(s_0));
-                    destinations.or(ubaStartState.getEdge(new APElement(s_labels2)));
+        Map<Integer, Set<Integer>> labelMap = new HashMap<>();
+        for (int k = 0; k < numAPs; k++) {
+            String key = uba.getAPSet().getAP(k).split("_")[0];
+            labelMap.put(k, labelStringMap.get(key));
+        }
+
+        // We need results for all states of the original model in statesOfInterest
+        // We thus explore states of the product starting from these states.
+        // These are designated as initial states of the product model
+        // (a) to ensure reachability is done for these states; and
+        // (b) to later identify the corresponding product state for the original states
+        //     of interest
+        if (verbosity >= 2) {
+            mainLog.println("labelBS: " + labelBS);
+            mainLog.println("labelMap: " + labelMap);
+        }
+
+
+        int newDtmcInit = dtmc.getNumStates();
+        for (int s_0 : new IterableStateSet(statesOfInterest, dtmc.getNumStates())) {
+            // Get BitSet representing APs (labels) satisfied by state s_0
+            if (verbosity >= 2) {
+                mainLog.println("statesOfInterest: " + statesOfInterest);
+                mainLog.println("s_labels: " + s_labels);
+            }
+
+            // Find corresponding initial state in DA
+            NBA_State ubaStartState = uba.getStartState();
+            MyBitSet destinations = new MyBitSet(uba.size());
+
+            for (int k = 0; k < numAPs; k++) {
+                if (!labelBS.get(k).isEmpty()) {
+                    for (int k2 : labelMap.get(k)) {
+                        MyBitSet s_labels2 = new MyBitSet(numAPs);
+                        s_labels2.set(k2, labelBS.get(k).get(s_0));
+                        destinations.or(ubaStartState.getEdge(new APElement(s_labels2)));
+                    }
                 }
             }
-        }
-        if (destinations.isEmpty()) {
-            // Language is empty starting from this DTMC start state -> just skip
-            continue;
-        }
-        mainLog.println("LMC state" + s_0 + ", destinations =" + destinations);
 
-        // Add (initial) state to product
-        Integer q_0 = ubaStartState.getName();
-        queue.add(new Point(s_0,q_0.intValue()));
-        addState();
-        addInitialState(getNumStates() - 1);
-        if (verbosity > 2) {
-            mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")" + " in constructing GFG DTMC product ");
-        }
-
-        map[s_0 * ubaSize + q_0] = getNumStates() - 1;
-    }
-
-    // Product states
-    //System.out.println("Map = " + Arrays.toString(map));
-    BitSet visited = new BitSet(prodNumStates);
-    while (!queue.isEmpty()) {
-        Point p = queue.pop();
-        s_1 = p.x;
-        q_1 = p.y;
-        visited.set(s_1 * ubaSize + q_1);
-
-
-        // Go through transitions from state s_1 in original model
-
-        for(APElement ap: uba.nba_i_getAPSet().elements()){
-            // Find corresponding successor in UBA
-            NBA_State ubaState = uba.get(q_1);
-            MyBitSet destinations = ubaState.getEdge(ap);
-            if(destinations.isEmpty() || ap.cardinality() != 1) continue;
-
-            //check can continue
-            int idx = ap.nextSetBit(0);
-            //mainLog.println("idx: " + idx);
-
-            boolean isSet = false;
-            for (int i: labelMap.get(idx)){
-                if(labelBS.get(i).get(s_1))
-                    isSet = true;
-                break;
+            if (destinations.isEmpty()) {
+                // Language is empty starting from this DTMC start state -> just skip
+                continue;
             }
-            if(!isSet) continue;
+            if (verbosity >= 2) {
+                mainLog.println("LMC start state = " + s_0 + ", destinations =" + destinations);
+            }
 
-            Iterator<Map.Entry<Integer, Double>> iter = ((DTMC) dtmc).getTransitionsIterator(s_1);
+            for(Iterator<Integer> initialStatesIterator = destinations.iterator(); initialStatesIterator.hasNext();) {
+                // Add (initial) state to product
+                Integer q_0 = initialStatesIterator.next();
+                queue.add(new Point(s_0,q_0.intValue()));
+                addState();
+                addInitialState(getNumStates() - 1);
+                if (verbosity > 2) {
+                    mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")" + " in constructing GFG DTMC product ");
+                }
+                map[s_0 * ubaSize + q_0] = getNumStates() - 1;
+            }
+        }
 
-            while (iter.hasNext()) {
-                Map.Entry<Integer, Double> e = iter.next();
-                s_2 = e.getKey();
-                double prob = e.getValue();
+        // Product states
+        //System.out.println("Map = " + Arrays.toString(map));
+        BitSet visited = new BitSet(prodNumStates);
+        while (!queue.isEmpty()) {
+            Point p = queue.pop();
+            s_1 = p.x;
+            q_1 = p.y;
+            visited.set(s_1 * ubaSize + q_1);
 
 
-                //MyBitSet destinations = ubaState.getEdge(new APElement(s_labels));
-                Distribution dist = new Distribution();
-                for(Iterator<Integer> ubaStatesIterator = destinations.iterator(); ubaStatesIterator.hasNext();) {
-                    q_2 = ubaStatesIterator.next();
-                    if (q_2 < 0) {
-                        throw new PrismException("The deterministic automaton is not complete (state " + q_1 + ")");
+            // Go through transitions from state s_1 in original model
+            for (APElement ap : uba.nba_i_getAPSet().elements()) {
+
+                // Find corresponding successor in UBA
+                NBA_State ubaState = uba.get(q_1);
+                MyBitSet destinations = ubaState.getEdge(ap);
+                if (destinations.isEmpty() || ap.cardinality() != 1) continue;
+
+                Iterator<Map.Entry<Integer, Double>> iter = ((DTMC) dtmc).getTransitionsIterator(s_1);
+
+                while (iter.hasNext()) {
+                    Map.Entry<Integer, Double> e = iter.next();
+                    s_2 = e.getKey();
+                    double prob = e.getValue();
+
+                    //check can continue
+                    int idx = ap.nextSetBit(0);
+                    //mainLog.println("idx: " + idx);
+
+                    boolean isSet = false;
+                    for (int i : labelMap.get(idx)) {
+                        if (labelBS.get(i).get(s_2)){
+                            isSet = true;
+                            break;
+                            }
                     }
-                    // Add state/transition to model
-                    if (!visited.get(s_2 * ubaSize + q_2) && map[s_2 * ubaSize + q_2] == -1) {
-                        queue.add(new Point(s_2, q_2));
-                        //Create probabilistic state
-                        addState();
-                        map[s_2*ubaSize + q_2] = getNumStates() - 1;
-                        if (prodStatesList != null) {
-                            // Store state information for the product
-                            prodStatesList.add(dtmc.getStatesList().get(s_2));
+                    if (!isSet) continue;
+
+
+                    //MyBitSet destinations = ubaState.getEdge(new APElement(s_labels));
+                    Distribution dist = new Distribution();
+                    for (Integer destination : destinations) {
+                        q_2 = destination;
+                        if (q_2 < 0) {
+                            throw new PrismException("The deterministic automaton is not complete (state " + q_1 + ")");
                         }
+                        // Add state/transition to model
+                        if (!visited.get(s_2 * ubaSize + q_2) && map[s_2 * ubaSize + q_2] == -1) {
+                            queue.add(new Point(s_2, q_2));
+                            //Create probabilistic state
+                            addState();
+                            map[s_2 * ubaSize + q_2] = getNumStates() - 1;
+                            if (prodStatesList != null) {
+                                // Store state information for the product
+                                prodStatesList.add(dtmc.getStatesList().get(s_2));
+                            }
+                        }
+                        dist.add(map[s_2 * ubaSize + q_2], (1.0 * prob) / (destinations.cardinality()));
                     }
-                    dist.add(map[s_2*ubaSize + q_2],(1.0*prob)/(destinations.cardinality()));
+                    addActionLabelledChoice(map[s_1 * ubaSize + q_1], dist, ap);
                 }
-                addActionLabelledChoice(map[s_1*ubaSize + q_1], dist, ap);
             }
         }
-    }
 
-    // Build a mapping from state indices to states (s,q), encoded as (s * daSize + q)
-    //System.out.println("Map = " + Arrays.toString(map));
-    invMap = new int[getNumStates()];
-    for (int i = 0; i < map.length; i++) {
-        if (map[i] != -1) {
-            invMap[map[i]] = i;
+
+        // Build a mapping from state indices to states (s,q), encoded as (s * daSize + q)
+        //System.out.println("Map = " + Arrays.toString(map));
+        invMap = new int[getNumStates()];
+        for (int i = 0; i < map.length; i++) {
+            if (map[i] != -1) {
+                invMap[map[i]] = i;
+            }
         }
-    }
 
-    findDeadlocks(false);
+        findDeadlocks(false);
 
-    if (prodStatesList != null) {
-        setStatesList(prodStatesList);
-    }
-
-    //final MDPSparse productModel;
-    //mainLog.println("Converting product model to MDPSparse");
-
-    //Lift acceptance condition
-    accEdges = new HashMap<>();
-
-    for(int i = 0; i < getNumStates(); i++) {
-        int q = getUBAState(i);
-        //APSet apset = new APSet();
-        if(uba.getAccEdges().get(q) != null) {
-            Set<APElement> apset = uba.getAccEdges().get(q).keySet();
-            accEdges.put(i, apset);
+        if (prodStatesList != null) {
+            setStatesList(prodStatesList);
         }
-    }
 
-    actions = uba.getAPSet();
-    if(verbosity >= 2) {
-        //mainLog.println("UBA accepting transitions: " + uba.getAccEdges());
-        //mainLog.println("Accepting transitions: " + accEdges);
-        //uba.print_hoa(System.out);
-        //mainLog.println("Product: " + this.toString());
-        mainLog.println("Labels: " + uba.getAPSet());
-        mainLog.print("invMap: ");
-        for(int i = 0; i < this.numStates; i++){
-            mainLog.print(invMap[i] + ", ");
+        //final MDPSparse productModel;
+        //mainLog.println("Converting product model to MDPSparse");
+
+        //Lift acceptance condition
+        accEdges = new HashMap<>();
+
+        for (int i = 0; i < getNumStates(); i++) {
+            int q = getUBAState(i);
+            //APSet apset = new APSet();
+            if (uba.getAccEdges().get(q) != null) {
+                Set<APElement> apset = uba.getAccEdges().get(q).keySet();
+                accEdges.put(i, apset);
+            }
         }
-        mainLog.print("\n");
+
+        actions = uba.getAPSet();
+        if (verbosity >= 2) {
+            //mainLog.println("UBA accepting transitions: " + uba.getAccEdges());
+            //mainLog.println("Accepting transitions: " + accEdges);
+            //uba.print_hoa(System.out);
+            //mainLog.println("Product: " + this.toString());
+            mainLog.println("Labels: " + uba.getAPSet());
+            mainLog.print("invMap: ");
+            for (int i = 0; i < this.numStates; i++) {
+                mainLog.print(invMap[i] + ", ");
+            }
+            mainLog.print("\n");
+        }
+
+        //// generate equivalent GFG states
+        equivGFG = new HashMap<>();
+        Iterator<NBA_State> iter = uba.iterator();
+        while (iter.hasNext()) {
+            NBA_State s = iter.next();
+            for (APElement ap : uba.nba_i_getAPSet().elements()) {
+                if (ap.cardinality() != 1) continue;
+                MyBitSet succs = s.getEdge(ap);
+                if (succs.cardinality() > 1) {
+                    for (int t : IterableBitSet.getSetBits(succs)) {
+                        //if(bisMap.containsKey(t)) break;
+                        equivGFG.put(t, succs);
+                    }
+                }
+
+            }
+        }
+
+        if(verbosity >= 2) {
+            mainLog.println("equivGFG = " + equivGFG);
+        }
+
+        //// generate equivalent LMC states
+        LinkedList<Integer> dtmcq = new LinkedList<>();
+        Set<Integer> visitedDTMC = new HashSet<>();
+        HashMap<Integer, BitSet> succMap = new HashMap<>();
+        dtmcq.add(dtmc.getFirstInitialState());
+        while(!dtmcq.isEmpty()){
+            int s = dtmcq.pop();
+            visitedDTMC.add(s);
+            BitSet sSet = new BitSet(dtmc.getNumStates());
+            Iterator<Map.Entry<Integer, Double>> iter2 = ((DTMC) dtmc).getTransitionsIterator(s);
+            while(iter2.hasNext()){
+                int t = iter2.next().getKey();
+                sSet.set(t);
+                if(!visitedDTMC.contains(t)) dtmcq.add(t);
+            }
+            succMap.put(s,sSet);
+        }
+        equivDTMC = new HashMap<>();
+
+        for(int v: visitedDTMC){
+            BitSet vSucc = succMap.get(v);
+            BitSet vSet = new BitSet(dtmc.getNumStates());
+            for(int w: visitedDTMC){
+                if(succMap.get(w).equals(vSucc)) vSet.set(w);
+            }
+            equivDTMC.put(v,vSet);
+        }
+
+        if(verbosity >= 2) {
+            mainLog.println("equivDTMC = " + equivDTMC);
+        }
+
     }
 
-    //final LTLProduct<M> product = new LTLProduct<M>(productModel, dtmc, null, daSize, invMap);;
 
-    //// generate acceptance for the product model by lifting
-    //product.setAcceptance(liftAcceptance(product, da.getAcceptance()));
-
-    //// lift the labels
-    //for (String label : dtmc.getLabels()) {
-    //BitSet liftedLabel = product.liftFromModel(dtmc.getLabelStates(label));
-    //prodModel.addLabel(label, liftedLabel);
-    //}
-
-    //return product;
-
-}
 
     public HashMap<Integer, Set<APElement>> getAccEdges() {
         return accEdges;
     }
-/*
-    public String SCC2Octave(BitSet scc) {
-        String result = " A = [";
-        int size = 0;
-        Map<Integer,Integer> map = new HashMap<Integer,Integer>();
-        for(int i = scc.nextSetBit(0); i >= 0; i = scc.nextSetBit(i+1)) {
-            map.put(new Integer(i), new Integer(size));
-            size++;
-        }
 
-        for(int i = 0; i < size; i++) {
-            double[] pseudoDistribution = new double[size];
-            for(Iterator<Map.Entry<Integer, Double>> it = getTransitionsIterator(i); it.hasNext();) {
-                Map.Entry<Integer,Double> entry = it.next();
-                int nonDetState = entry.getKey().intValue();
-                for(Iterator<Integer> succIt = getSuccessorsIterator(nonDetState); succIt.hasNext();) {
-                    int succ = succIt.next();
-                    if(scc.get(succ)) {
-                        pseudoDistribution[map.get(new Integer(succ))] = entry.getValue();
-                    }
-                }
-            }
-            for(int pos = 0; pos < size; pos++) {
-                result += pseudoDistribution[pos] + " ";
-            }
-            result += "\n";
-        }
-        result += "]";
-        return result;
-    }
-*/
     DoubleMatrix2D positivityMatrixForMCC(BitSet mcc, Map<Integer,Integer> map, boolean subtractIdentity) throws PrismException {
 
         int size = 0;

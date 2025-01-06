@@ -71,6 +71,7 @@ public class LTLGFGModelChecker extends PrismComponent
             }
 
             return result;
+
         }
     };
 
@@ -83,7 +84,8 @@ public class LTLGFGModelChecker extends PrismComponent
 
     private boolean sanityCheck = false;
 
-    private HashMap<Integer, BitSet> bisMap = new HashMap<>();
+    private HashMap<Integer, BitSet> equivDTMC = new HashMap<>();
+    private HashMap<Integer, BitSet> equivGFG = new HashMap<>();
 
     public LTLGFGModelChecker(ProbModelChecker mc)
     {
@@ -220,8 +222,10 @@ public class LTLGFGModelChecker extends PrismComponent
         }
 
         LTLProduct ltlProd = new LTLProduct(prod);
-
+        equivGFG = prod.getEquivGFG();
+        equivDTMC = prod.getEquivDTMCStates();
         timer.stop(" (product has "+prod.getNumStates()+" states)");
+
         return ltlProd;
     }
 
@@ -547,35 +551,7 @@ public class LTLGFGModelChecker extends PrismComponent
         timer.stop();
     }
 
-    private void generateBisimilarMap (DTMCGFGProduct product, final BitSet mcc){
-        bisMap = new HashMap<>();        //int s = mcc.nextSetBit(0);
-
-        for (int s : IterableBitSet.getSetBits(mcc)) {
-            for(int c = 0; c < product.getNumChoices(s); c++){
-                if(product.allSuccessorsInSet(s,c,mcc) && product.getProbStatesSuccessors(s,c).size() > 1){
-                    BitSet bset = new BitSet(product.getNumStates());
-                    for(int t: product.getProbStatesSuccessors(s,c)){
-                        bset.set(t);
-                    }
-                    for(int t: product.getProbStatesSuccessors(s,c)){
-                        if(bisMap.containsKey(t)) break;
-                        bisMap.put(t, bset);
-                    }
-                }
-            }
-        }
-        if(verbosity >= 2) {
-            mainLog.println("bisMap = " + bisMap);
-            for(int i: bisMap.keySet()){
-                mainLog.print(i + " == " );
-                for(Integer j: IterableBitSet.getSetBits(bisMap.get(i))){
-                    mainLog.print( j + "(" +product.getDTMCState(j)+ "," + product.getUBAState(j) + ")" );
-                }
-            }
-        }
-    }
-
-        private Set<Integer> generateCut(DTMCGFGProduct product, final int probState, final BitSet mcc) throws PrismException  {
+    private Set<Integer> generateCut(DTMCGFGProduct product, final int probState, final BitSet mcc) throws PrismException  {
         StopWatch timer = new StopWatch(mainLog);
 
         if (!mcc.get(probState)) {
@@ -587,7 +563,7 @@ public class LTLGFGModelChecker extends PrismComponent
         Map<Integer,Set<Integer>> succsForZ = new HashMap<Integer,Set<Integer>>();
 
         // partition the mcc
-        generateBisimilarMap(product, mcc);
+        //generateBisimilarMap(product, mcc);
 
         // for every state, the state can be reached via z=epsilon
         for(Integer probState_: IterableBitSet.getSetBits(mcc)) {
@@ -657,8 +633,9 @@ public class LTLGFGModelChecker extends PrismComponent
                                 // ... we extend the word and add to the BFS queue
                                 SharedWord<APElement> curWord = word.append(ap);
 
-                                boolean isLeftBis = leftSucc == probState || ( (bisMap.get(probState) == null)? false: bisMap.get(probState).get(leftSucc));
-                                boolean isRightBis = rightSucc == probState || ((bisMap.get(probState) == null)? false: bisMap.get(probState).get(rightSucc));
+
+                                boolean isLeftBis = leftSucc == probState || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(leftSucc)));
+                                boolean isRightBis = rightSucc == probState || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(rightSucc)));
 
 
                                 if ((!isLeftBis  &&(rightSucc == probState && !succsForZ.get(leftSucc).isEmpty()) ||
@@ -738,11 +715,10 @@ public class LTLGFGModelChecker extends PrismComponent
         //get rid of bisimilar states
             Set<Integer> C = new HashSet<Integer>();
             for (int c: tempC){
-                Set<Integer> setC = new HashSet<>();
                 boolean isContained = false;
-                if(bisMap.get(c) != null){
-                    for(int s: IterableBitSet.getSetBits(bisMap.get(c)) ) {
-                        if (C.contains(s)) {
+                if(equivGFG.get(product.getUBAState(c)) != null){
+                    for(int t: C){
+                        if(equivGFG.get(product.getUBAState(c)).get(product.getUBAState(t)) && equivDTMC.get(product.getDTMCState(c)).get(product.getDTMCState(t))){
                             isContained = true;
                             break;
                         }

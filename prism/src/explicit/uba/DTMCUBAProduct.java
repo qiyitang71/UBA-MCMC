@@ -148,7 +148,7 @@ public class DTMCUBAProduct extends DTMCSimple {
 				// Language is empty starting from this DTMC start state -> just skip
 				continue;
 			}
-			mainLog.println("LMC state" + s_0 + ", destinations =" + destinations);
+			mainLog.println("LMC state = " + s_0 + ", destinations =" + destinations);
 
 			for(Iterator<Integer> initialStatesIterator = destinations.iterator(); initialStatesIterator.hasNext();) {
 				// Add (initial) state to product
