@@ -20,7 +20,7 @@ Accepting transition are all labelled with 0.
 def findSuccessor(state, letter, N): #gives list of successor states on reading letter from state
 	if letter == 0: # sigma
 		assert(state != 0)
-		return([0,((state >> N-1)&1)|(2**(N)-1)&(state << 1)])
+		return([0,((state >> (N-1))&1)|(2**(N)-1)&(state << 1)])
 		#return([0,(state & 1)*(2**(N-1))|(state >> 1)])
 
 	elif letter == 1: #pi
@@ -55,7 +55,7 @@ def countBit(n: int) -> int:
     return sum(b == '1' for b in bin(n))
     
 def ubaGenerator(N):
-	with open(f"UBAs/uba-{N}.hoa",'w') as file:
+	with open(f"UBA2/uba-{N}.hoa",'w') as file:
 		file.write(f"HOA: v1\n")
 		file.write(f"name: \"uba-{N}\"\n")
 		NO_OF_STATES = 2**N -1
