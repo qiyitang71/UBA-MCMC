@@ -967,6 +967,7 @@ public class LTLUBAModelChecker extends PrismComponent
 
 		// Find accepting states + compute reachability probabilities
 		BitSet acc;
+
 		if (product.getAcceptance() instanceof AcceptanceReach) {
 			mainLog.println("\nSkipping BSCC computation since acceptance is defined via goal states...");
 			acc = ((AcceptanceReach)product.getAcceptance()).getGoalStates();
@@ -986,6 +987,45 @@ public class LTLUBAModelChecker extends PrismComponent
 		return probs;
 	}
 
+	public StateValues computeWithDA2(DTMC model, LTLProduct product) throws PrismException {
+		LTLModelChecker mcLtl = new LTLModelChecker(this);
+
+		mainLog.println("The UBA is actually deterministic, we continue with standard model checking with a DBA.");
+
+		// Find accepting states + compute reachability probabilities
+		BitSet acc = new BitSet();;
+
+		{
+			SCCConsumerStore sccs = new SCCConsumerStore();
+			SCCComputer sccComputer = SCCComputer.createSCCComputer(this, product.getProduct(), sccs);
+			sccComputer.computeSCCs();
+			List<BitSet> bsccs = sccs.getBSCCs();
+
+			for (BitSet bscc : bsccs) {
+				for (int state : new IterableStateSet(bscc, product.getProduct().getNumStates())) {
+					MyBitSet set = product.getAccEdges().get(state);
+					if(set == null) continue;
+					if(bscc.intersects(set)){
+						acc.or(bscc);
+
+					}
+				}
+			}
+
+		}
+
+		mainLog.println("\nComputing reachability probabilities...");
+		DTMCModelChecker mcProduct = new DTMCModelChecker(this);
+		mcProduct.inheritSettings(mc);
+		StateValues probsProduct = StateValues.createFromDoubleArray(mcProduct.computeReachProbs(product.getProduct(), acc).soln, product.getProduct());
+
+		// Mapping probabilities in the original model
+		StateValues probs = product.projectToOriginalModel(model, probsProduct);
+		probsProduct.clear();
+
+		return probs;
+	}
+
 	public StateValues checkProbPathFormulaLTL(DTMC model, Expression expr, boolean qual, BitSet statesOfInterest) throws PrismException
 	{
 		StateValues probs;
@@ -995,12 +1035,20 @@ public class LTLUBAModelChecker extends PrismComponent
 
 		GFG uba = constructUBAForLTLFormula(mc, model, expr, labelBS);
 
+		/*
 		if (!getSettings().getBoolean(PrismSettings.PRISM_UBA_PURE) &&
 		    uba.isDeterministic()) {
 			return computeWithDA(model, uba, labelBS, statesOfInterest);
 		}
+		*/
 
-			product = constructProduct(model, uba, labelBS, statesOfInterest);
+		product = constructProduct(model, uba, labelBS, statesOfInterest);
+
+		if (!getSettings().getBoolean(PrismSettings.PRISM_UBA_PURE) &&
+				uba.isDeterministic()) {
+			return computeWithDA2(model, product);
+		}
+
 		probs = computeValues(product);
 		
 		StateValues result = product.projectToOriginalModel(model, probs);
