@@ -55,7 +55,7 @@ def countBit(n: int) -> int:
     return sum(b == '1' for b in bin(n))
     
 def ubaGenerator(N):
-	with open(f"UBA2/uba-{N}.hoa",'w') as file:
+	with open(f"UBAs/uba-{N}.hoa",'w') as file:
 		file.write(f"HOA: v1\n")
 		file.write(f"name: \"uba-{N}\"\n")
 		NO_OF_STATES = 2**N -1

@@ -21,7 +21,7 @@ gfg=$(grep "GFG has" "$file" | grep -oE '[0-9]+')
 prod=$(awk '/product has/ { for (i=1; i<=NF; i++) if ($i == "has") print $(i+1) }' "$file")
 
 # Extract the time in seconds from line 21
-time_line21=$(sed -n '21p' "$file" | grep -oE '[0-9]+(\.[0-9]+)?')
+time_line21=$(sed -n '20p' "$file" | grep -oE '[0-9]+(\.[0-9]+)?')
 
 # Extract the time in seconds from the line containing "Time for model checking:"
 time_model_checking=$(grep "Time for model checking:" "$file" | grep -oE '[0-9]+(\.[0-9]+)?')
