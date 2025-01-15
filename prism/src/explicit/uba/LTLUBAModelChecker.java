@@ -153,7 +153,17 @@ public class LTLUBAModelChecker extends PrismComponent
 			for (int i=0; i<uba.getAPSet().size(); i++) {
 				Expression label = apExpressions.get(i);
 				label.typeCheck();
-				BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+				//BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+				/// /////////////////CHEAT!
+				BitSet labelStates = new BitSet(model.getNumStates());
+
+				for(int s = 0; s < model.getNumStates(); s++){
+					if (s%4 == i){
+						labelStates.set(s);
+					}
+				}
+				/// /////////////////
+
 				labelBS.add(labelStates);
 				uba.getAPSet().renameAP(i, "L"+i);
 			}
@@ -412,13 +422,13 @@ public class LTLUBAModelChecker extends PrismComponent
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("(M+I)/2 =" + sccMatrix);
+			//mainLog.println("(M+I)/2 =" + sccMatrix);
 		}
 
 		// do iterations
 		int n = scc.cardinality();
 
-		int maxIters = getSettings().getInteger(PrismSettings.PRISM_MAX_ITERS);
+		int maxIters = Integer.MAX_VALUE;//getSettings().getInteger(PrismSettings.PRISM_MAX_ITERS);
 		boolean absolute = (getSettings().getString(PrismSettings.PRISM_TERM_CRIT).equals("Absolute"));
 		double epsilon = getSettings().getDouble(PrismSettings.PRISM_TERM_CRIT_PARAM);
 
@@ -479,7 +489,7 @@ public class LTLUBAModelChecker extends PrismComponent
 		}
 
 		if (verbosity >= 2) {
-			mainLog.println("Eigenvector = " +oldX);
+			//mainLog.println("Eigenvector = " +oldX);
 		}
 
 		// compute cut

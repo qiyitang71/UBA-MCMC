@@ -123,6 +123,7 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_EXPORT_PARETO_FILENAME			= "prism.exportParetoFileName";
 
 	public static final String PRISM_GFG_MC						= "prism.gfgMC";
+	public static final String PRISM_GFG_POWER						= "prism.gfgPower";
 	public static final String PRISM_LTL_UBA						= "prism.ltlUba";
 	public static final String PRISM_UBA_PURE						= "prism.ubaPure";
 	public static final String PRISM_UBA_POS_METHOD					= "prism.ubaPosMethod";
@@ -369,6 +370,8 @@ public class PrismSettings implements Observer
 																			"Method for UBA reachability equation system solving."},
 			{ BOOLEAN_TYPE,		PRISM_UBA_POWER,						"Use the power method for computing SCC probabilities",		"4.3",			new Boolean(false),		"",
 																			"Use power method for computing SCC probabilities."},
+			{ BOOLEAN_TYPE,		PRISM_GFG_POWER,						"Use the power method for computing MCC probabilities",		"4.3",			new Boolean(false),		"",
+						"Use power method for computing MCC probabilities."},
 			{ INTEGER_TYPE,		PRISM_UBA_VERBOSITY,					"Verbosity for UBA checker",		"4.3",			new Integer(0),		"",
 																			"Verbosity for UBA checker."},
 			{ BOOLEAN_TYPE,		PRISM_UBA_SANITY,						"Check whether UBA calculations are sane",		"4.3",			false,		"",
@@ -1549,6 +1552,9 @@ public class PrismSettings implements Observer
 		}
 		else if (sw.equals("ubapower")) {
 			set(PRISM_UBA_POWER, true);
+		}
+		else if (sw.equals("gfgpower")) {
+			set(PRISM_GFG_POWER, true);
 		}
 		else if (sw.equals("ubaverbosity")) {
 			if (i < args.length - 1) {

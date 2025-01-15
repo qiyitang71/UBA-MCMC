@@ -7,7 +7,7 @@ do
 
   #UBA model checking !use timeout on LINUX 
   echo -e "UBA Model Checking dba-$i ..."
-  gtimeout 30m ../../prism/bin/prism -explicit -ltluba -ubaverbosity 1 random2.pm -pf 'P=?[ HOA: {"'"DBAs/dba-$i.hoa"'", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2, "dollar" <- s=3}]' >> "results/dba-$i.txt"
+  gtimeout 30m ../../prism/bin/prism -explicit -ltluba -ubaverbosity 1 random.pm -pf 'P=?[ HOA: {"'"DBAs/dba-$i.hoa"'", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2}]' >> "results/dba-$i.txt"
 
   #timing the transformations
   { echo -e "Transforming to GFG-NCA gfg-$i ..."; } 2>&1 | tee "results/gfg-$i.txt"
@@ -17,6 +17,6 @@ do
   { echo -e ""; } >> "results/gfg-$i.txt"
   #GFG model checking !use timeout on LINUX
   echo -e "GFG Model Checking gfg-$i ..." 
-  gtimeout 30m ../../prism/bin/prism -explicit -gfgmc -ubaverbosity 1 random2.pm -pf 'P=?[ HOA: {"'"GFGs/gfg-$i.hoa"'", "sigma_0" <- s=0, "pi_0" <- s=1, "hash_0" <- s=2, "dollar_0" <- s=3 }]' >> "results/gfg-$i.txt"
+  gtimeout 30m ../../prism/bin/prism -explicit -gfgmc -ubaverbosity 1 random.pm -pf 'P=?[ HOA: {"'"GFGs/gfg-$i.hoa"'", "sigma" <- s=0, "pi" <- s=1, "hash" <- s=2 }]' >> "results/gfg-$i.txt"
 
 done

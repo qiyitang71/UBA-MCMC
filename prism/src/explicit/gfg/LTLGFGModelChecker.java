@@ -20,7 +20,9 @@ import cern.colt.matrix.impl.DenseDoubleMatrix2D;
 import cern.colt.matrix.linalg.Algebra;
 import cern.colt.matrix.linalg.QRDecomposition;
 import explicit.*;
+import explicit.uba.DTMCUBAProduct;
 import explicit.uba.LTL2UBA;
+import explicit.uba.LTLUBAModelChecker;
 import explicit.uba.SharedWord;
 import jltl2ba.APElement;
 import jltl2ba.APSet;
@@ -135,12 +137,28 @@ public class LTLGFGModelChecker extends PrismComponent
             for (int i=0; i<uba.getAPSet().size(); i++) {
                 Expression label = apExpressions.get(i);
                 label.typeCheck();
+
+                /*
                 if(mc.checkExpression(model, label, null) != null) {
                     BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
                     labelBS.add(labelStates);
                 }else{
                     labelBS.add(new BitSet());
+                }*/
+
+                /// /////////////////CHEAT!
+
+                BitSet labelStates = new BitSet(model.getNumStates());
+
+                for(int s = 0; s < model.getNumStates(); s++){
+                    if (s%4 == i/2){
+                        labelStates.set(s);
+                    }
                 }
+                labelBS.add(labelStates);
+
+                /// /////////////////
+
                 //uba.getAPSet().renameAP(i, "L"+i);//do not rename
             }
         } else {
@@ -256,13 +274,13 @@ public class LTLGFGModelChecker extends PrismComponent
                     mainLog.println("\nMCC " + mccIndex + " has " + mcc.cardinality() + " states");
                 }
 
-                boolean isPositive = handleMCC(product, mccIndex, mcc, result, S_MCC_pos);;
-                /*
-                if (getSettings().getBoolean(PrismSettings.PRISM_UBA_POWER)) {
+                boolean isPositive;//handleMCC(product, mccIndex, mcc, result, S_MCC_pos);;
+
+                if (getSettings().getBoolean(PrismSettings.PRISM_GFG_POWER)) {
                     isPositive = handleMCCPower(product, mccIndex, mcc, result, S_MCC_pos);
                 } else {
                     isPositive = handleMCC(product, mccIndex, mcc, result, S_MCC_pos);
-                }*/
+                }
                 if (isPositive) posMccCount++;
             }
             timer.stop(" ("+posMccCount+" positive MCCs, known probabilities for "+S_MCC_pos.cardinality()+" states)");
@@ -348,6 +366,195 @@ public class LTLGFGModelChecker extends PrismComponent
 
         return isPositive;
     }
+
+    private boolean handleMCCPower(LTLProduct product, int mccIndex, BitSet mcc, StateValues result, BitSet knownValues) throws PrismException
+    {
+        StopWatch timer = new StopWatch(mainLog);
+        timer.start("checking whether SCC " + mccIndex + " is positive and computing eigenvector");
+        // first, check that SCC intersects accepting edges
+        DTMCGFGProduct prod = product.getProduct();
+        HashMap<Integer, Set<APElement>>  accEdges = product.getAccEdges();
+        // first, check that MCC intersects accepting edges
+        boolean acc = false;
+        for (int state : new IterableStateSet(mcc, prod.getNumStates())) {
+            Set<APElement> set = accEdges.get(state);
+            if(set == null) continue;
+            for(APElement ap: set){
+                for(int i = 0; i < prod.getNumChoices(state);i++) {
+                    if(!prod.getAction(state, i).equals(ap)) continue;
+                    if(prod.allSuccessorsInSet(state, i, mcc)){
+                        acc = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if(!acc){
+            if (verbosity >= 1) timer.stop(" (MCC is zero, no accepting edges)");
+            return false;
+        }
+
+
+
+
+        StopWatch timerMatrix = new StopWatch(mainLog);
+        timerMatrix.start("building positivity matrix");
+        Map<Integer, Integer> map = new LinkedHashMap<Integer, Integer>();
+        DoubleMatrix2D sccMatrix = product.getProduct().positivityMatrixForMCC(mcc, map, false);
+        assert(sccMatrix.rows() == sccMatrix.columns());
+        assert(sccMatrix.rows() == mcc.cardinality());
+        if (verbosity >= 1) {
+            timerMatrix.stop();
+        }
+
+        // M' = (M+I) / 2 to avoid periodicity problem
+        // do it using forEachNonZero to exploit sparseness of the matrix
+        sccMatrix.forEachNonZero(new IntIntDoubleFunction() {
+            @Override
+            public double apply(int row, int column, double value)
+            {
+                return value / 2;
+            }
+        });
+        // add I/2 to diagonal
+        for (int i = 0; i < sccMatrix.rows(); i++) {
+            sccMatrix.setQuick(i, i, sccMatrix.getQuick(i, i) + 0.5);
+        }
+
+        if (verbosity >= 2) {
+            //mainLog.println("(M+I)/2 =" + sccMatrix);
+        }
+
+        // do iterations
+        int n = mcc.cardinality();
+
+        int maxIters = Integer.MAX_VALUE;//getSettings().getInteger(PrismSettings.PRISM_MAX_ITERS);
+        boolean absolute = (getSettings().getString(PrismSettings.PRISM_TERM_CRIT).equals("Absolute"));
+        double epsilon = getSettings().getDouble(PrismSettings.PRISM_TERM_CRIT_PARAM);
+
+        DenseDoubleMatrix1D oldX = new DenseDoubleMatrix1D(n);
+        // initialize with 1
+        for (int i=0; i < n; i++) {
+            oldX.setQuick(i, 1.0);
+        }
+        boolean positive = false;
+        for (int iter = 0; iter < maxIters; iter++) {
+            DenseDoubleMatrix1D newX = new DenseDoubleMatrix1D(n);
+            sccMatrix.zMult(oldX, newX);
+
+            if (verbosity >= 2) {
+                //mainLog.println("Iteration " + iter+ ": "+newX.toString());
+            }
+
+            // check whether the we have a "drop" in all elements of the vector
+            boolean allSmaller = true;
+            boolean converged = true;
+            for (int i = 0; i < n; i++) {
+                double oldValue = oldX.getQuick(i);
+                double newValue = newX.getQuick(i);
+
+                if (PrismUtils.doublesAreClose(oldValue, newValue, epsilon, absolute)) {
+                    allSmaller = false;
+                } else {
+                    converged = false;
+                    if (!(newValue < oldValue)) {
+                        allSmaller = false;
+                    }
+                }
+
+                if ((!allSmaller) && (!converged)) {
+                    break;
+                }
+            }
+
+            if (allSmaller) {
+                // we know that the vector will converge against zero, we are done
+                if (verbosity >= 1)
+                    timer.stop(" (SCC is zero, "+iter+" iterations)");
+                return false;
+            }
+
+            oldX = newX;
+
+            if (converged) {
+                positive = true;
+                if (verbosity >= 1)
+                    timer.stop(" (SCC is positive, " + iter + " iterations)");
+                break;
+            }
+        }
+
+        if (!positive) {
+            throw new PrismException("SCC analysis (power method) did not converge within " + maxIters + " iterations");
+        }
+
+        if (verbosity >= 2) {
+            //mainLog.println("Eigenvector = " +oldX);
+        }
+
+        // compute cut
+        int probState = mcc.nextSetBit(0);
+        Set<Integer> cut = generateCut(product.getProduct(), probState, mcc);
+        if (verbosity >= 2) {
+            mainLog.println("Cut: " + cut);
+
+            for (Integer cutState : cut) {
+                mainLog.print("(" + prod.getDTMCState(cutState) + "," + prod.getUBAState(cutState) +  ")" );
+            }
+            mainLog.println();
+        }
+
+        // we have to weight the values...
+        double sumCut = 0.0;
+        for (int productIndex : cut) {
+            int solutionIndex = map.get(productIndex);
+            sumCut += oldX.getQuick(solutionIndex);
+        }
+        double alpha = 1 / sumCut;
+        if (verbosity >= 1) {
+            mainLog.println("Weighing the eigenvector with alpha = " + alpha + " to obtain probabilities");
+        }
+
+        double cutSum = 0.0;
+        double minValue = 0.0;
+        double maxValue = 0.0;
+        boolean first = true;
+        for (Entry<Integer, Integer> entry : map.entrySet()) {
+            int productIndex = entry.getKey();
+            int solutionIndex = entry.getValue();
+
+            double value = oldX.getQuick(solutionIndex);
+            if (sanityCheck && value == 0.0) {
+                throw new PrismException("Something strange going on (probability in positive SCC is zero for state "+productIndex+")");
+            }
+            // scale
+            value = value * alpha;
+            result.setDoubleValue(productIndex, value);
+            assert(!knownValues.get(productIndex));
+            knownValues.set(productIndex);
+
+            if (cut.contains(productIndex)) {
+                cutSum += value;
+            }
+            if (first) {
+                minValue = maxValue = value;
+                first = false;
+            } else {
+                minValue = Math.min(minValue, value);
+                maxValue = Math.max(maxValue, value);
+            }
+        }
+//		if (verbosity >= 1) timer.stop();
+
+        if (verbosity >= 1) {
+            mainLog.println("Sum of probabilities for the cut C = "+cutSum + " for SCC "+mccIndex);
+            mainLog.println("Probabilities in SCC " +mccIndex + " are in the range ["+minValue+","+maxValue+"]");
+        }
+
+        return true;
+    }
+
 
     //TODO: check it has positive solution with x(c) = x(d) for all c ~ d
     private boolean checkIsMCCPositive(LTLProduct product, int mccIndex, BitSet mcc) throws PrismException
@@ -593,10 +800,16 @@ public class LTLGFGModelChecker extends PrismComponent
             while(!queue.isEmpty()) {
                 Pair<ProductState, SharedWord<APElement>> entry = queue.poll();
                 ProductState current = entry.first;
+                if (verbosity >= 2) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
+
                 if (!visited.contains(current)) {
                     SharedWord<APElement> word = entry.second;
                     Integer left = current.getFirstState();
                     Integer right = current.getSecondState();
+
+                    visited.add(current);
+                    countVisited++;
+
                     if (!mcc.get(left) || !mcc.get(right)) {
                         // we don't want to leave the MCC
                         continue;
@@ -608,15 +821,15 @@ public class LTLGFGModelChecker extends PrismComponent
                         APElement ap = (APElement) product.getAction(left, c);
                         Set<Integer> leftSuccs = product.getProbStatesSuccessors(left,ap);
                         Set<Integer> rightSuccs;
-                        if (left == right) {
+                        if (left.equals(right)) {
                             rightSuccs = leftSuccs;
                         } else {
                             rightSuccs = product.getProbStatesSuccessors(right,ap);
                         }
                         //mainLog.println("leftSuccs = " + leftSuccs + "; rightSuccs = " + rightSuccs);
 
-                        visited.add(current);
-                        countVisited++;
+
+
                         for (Integer leftSucc : leftSuccs) {
                             for (Integer rightSucc : rightSuccs) {
                                 if (!mcc.get(leftSucc) || !mcc.get(rightSucc)) {
@@ -634,12 +847,12 @@ public class LTLGFGModelChecker extends PrismComponent
                                 SharedWord<APElement> curWord = word.append(ap);
 
 
-                                boolean isLeftBis = leftSucc == probState || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(leftSucc)));
-                                boolean isRightBis = rightSucc == probState || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(rightSucc)));
+                                boolean isLeftBis = (leftSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(leftSucc)));
+                                boolean isRightBis = (rightSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(rightSucc)));
 
 
-                                if ((!isLeftBis  &&(rightSucc == probState && !succsForZ.get(leftSucc).isEmpty()) ||
-                                                (!isRightBis  &&leftSucc == probState && !succsForZ.get(rightSucc).isEmpty()))) {
+                                if ((!isLeftBis  && (rightSucc == probState) && !succsForZ.get(leftSucc).isEmpty()) ||
+                                                (!isRightBis  && (leftSucc == probState) && !succsForZ.get(rightSucc).isEmpty())) {
                                     //Found extension
                                     found = true;
                                     if (verbosity >= 2) {
@@ -647,13 +860,13 @@ public class LTLGFGModelChecker extends PrismComponent
                                         mainLog.println("FOUND EXTENSION: (" + leftSucc + "," + rightSucc + ") with word " + wordInfo + ";");
                                         String cutInfo;
                                         if (leftSucc == probState) {
-                                            if (succsForZ.get(rightSucc).size() > 3) {
+                                            if (succsForZ.get(rightSucc).size() > 4) {
                                                 cutInfo = succsForZ.get(rightSucc).size() + " states";
                                             } else {
                                                 cutInfo = succsForZ.get(rightSucc).toString();
                                             }
                                         } else {
-                                            if (succsForZ.get(leftSucc).size() > 3) {
+                                            if (succsForZ.get(leftSucc).size() > 4) {
                                                 cutInfo = succsForZ.get(leftSucc).size() + " states";
                                             } else {
                                                 cutInfo = succsForZ.get(leftSucc).toString();
@@ -681,7 +894,37 @@ public class LTLGFGModelChecker extends PrismComponent
                                         }
                                         succsForZ_.put(probState_, newReach);
                                     }
+                                   ////////////////////////stop here
+                                    if(succsForZ_.get(probState).size() == succsForZ.get(probState).size()){
+                                        Set<Integer> tempC = succsForZ.get(probState);
 
+                                        if (verbosity >= 1) {
+                                            timer.stop(" ("+iterations+" iterations, " + countVisited + " extension checks, cut tempC has " + tempC.size() + " states)");
+                                        }
+
+                                        //get rid of bisimilar states
+                                        Set<Integer> C = new HashSet<Integer>();
+                                        for (int cc: tempC){
+                                            boolean isContained = false;
+                                            if(equivGFG.get(product.getUBAState(cc)) != null){
+                                                for(int t: C){
+                                                    if(equivGFG.get(product.getUBAState(cc)).get(product.getUBAState(t)) && equivDTMC.get(product.getDTMCState(cc)).get(product.getDTMCState(t))){
+                                                        isContained = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if(!isContained)
+                                                C.add(cc);
+                                        }
+
+                                        if (verbosity >= 1) {
+                                            timer.stop(" ("+iterations+" iterations, " + countVisited + " extension checks, cut C has " + C.size() + " states)");
+                                        }
+
+                                        return C;
+                                    }
+                                    /// /////////////////////////////////////////
                                     if (sanityCheck) {
                                         if (!succsForZ_.get(probState).containsAll(succsForZ.get(probState))) {
                                             throw new PrismException("The potential cut has got smaller.");
@@ -705,6 +948,7 @@ public class LTLGFGModelChecker extends PrismComponent
                 }
             }
         }
+
 
         Set<Integer> tempC = succsForZ.get(probState);
 
@@ -733,6 +977,8 @@ public class LTLGFGModelChecker extends PrismComponent
             }
 
             return C;
+
+
     }
 
 

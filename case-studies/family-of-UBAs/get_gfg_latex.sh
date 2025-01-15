@@ -36,6 +36,6 @@ fi
 total_time=$(awk -v t1="$time_line21" -v t2="$time_model_checking" 'BEGIN { print t1 + t2 }')
 
 # Output the total time
-echo "#states = $gfg, #product = $prod, total_time = $total_time s: $time_line21 (trans), $time_model_checking (mc)"
+echo "$gfg & $prod & $total_time s & $time_line21 s & $time_model_checking s"
 
 
