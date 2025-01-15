@@ -86,7 +86,7 @@ public class LTLGFGModelChecker extends PrismComponent
 
     private boolean sanityCheck = false;
 
-    private HashMap<Integer, BitSet> equivDTMC = new HashMap<>();
+    private HashMap<Integer, Integer> equivDTMC = new HashMap<>();
     private HashMap<Integer, BitSet> equivGFG = new HashMap<>();
 
     public LTLGFGModelChecker(ProbModelChecker mc)
@@ -800,7 +800,7 @@ public class LTLGFGModelChecker extends PrismComponent
             while(!queue.isEmpty()) {
                 Pair<ProductState, SharedWord<APElement>> entry = queue.poll();
                 ProductState current = entry.first;
-                if (verbosity >= 2) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
+                //if (verbosity >= 2) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
 
                 if (!visited.contains(current)) {
                     SharedWord<APElement> word = entry.second;
@@ -847,8 +847,8 @@ public class LTLGFGModelChecker extends PrismComponent
                                 SharedWord<APElement> curWord = word.append(ap);
 
 
-                                boolean isLeftBis = (leftSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(leftSucc)));
-                                boolean isRightBis = (rightSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& equivDTMC.get(product.getDTMCState(probState)).get(product.getDTMCState(rightSucc)));
+                                boolean isLeftBis = (leftSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && (equivDTMC.get(product.getDTMCState(probState)) == equivDTMC.get(product.getDTMCState(leftSucc))));
+                                boolean isRightBis = (rightSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& (equivDTMC.get(product.getDTMCState(probState))== equivDTMC.get(product.getDTMCState(rightSucc))));
 
 
                                 if ((!isLeftBis  && (rightSucc == probState) && !succsForZ.get(leftSucc).isEmpty()) ||
@@ -908,7 +908,7 @@ public class LTLGFGModelChecker extends PrismComponent
                                             boolean isContained = false;
                                             if(equivGFG.get(product.getUBAState(cc)) != null){
                                                 for(int t: C){
-                                                    if(equivGFG.get(product.getUBAState(cc)).get(product.getUBAState(t)) && equivDTMC.get(product.getDTMCState(cc)).get(product.getDTMCState(t))){
+                                                    if(equivGFG.get(product.getUBAState(cc)).get(product.getUBAState(t)) && (equivDTMC.get(product.getDTMCState(cc))==equivDTMC.get(product.getDTMCState(t)))){
                                                         isContained = true;
                                                         break;
                                                     }
@@ -962,7 +962,7 @@ public class LTLGFGModelChecker extends PrismComponent
                 boolean isContained = false;
                 if(equivGFG.get(product.getUBAState(c)) != null){
                     for(int t: C){
-                        if(equivGFG.get(product.getUBAState(c)).get(product.getUBAState(t)) && equivDTMC.get(product.getDTMCState(c)).get(product.getDTMCState(t))){
+                        if(equivGFG.get(product.getUBAState(c)).get(product.getUBAState(t)) && (equivDTMC.get(product.getDTMCState(c))==equivDTMC.get(product.getDTMCState(t)))){
                             isContained = true;
                             break;
                         }

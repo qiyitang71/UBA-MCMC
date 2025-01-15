@@ -45,7 +45,7 @@ public class DTMCGFGProduct extends MDPSimple {
     HashMap<Integer, Integer> stateMap = new HashMap<>();
     ArrayList<Integer>  splitterIds = new ArrayList<>();
 
-    HashMap<Integer, BitSet>  equivDTMC;
+    HashMap<Integer, Integer>  equivDTMC;
     HashMap<Integer, BitSet> equivGFG;
 
 
@@ -80,7 +80,7 @@ public class DTMCGFGProduct extends MDPSimple {
         return invMap[prodState]  % ubaSize;
     }
 
-    public HashMap<Integer, BitSet>  getEquivDTMCStates(){
+    public HashMap<Integer, Integer>  getEquivDTMCStates(){
         return equivDTMC;
     }
     public HashMap<Integer, BitSet> getEquivGFG(){
@@ -146,6 +146,7 @@ public class DTMCGFGProduct extends MDPSimple {
             String key = uba.getAPSet().getAP(k).split("_")[0];
             labelMap.put(k, labelStringMap.get(key));
         }
+
 
 
         // We need results for all states of the original model in statesOfInterest
@@ -299,9 +300,9 @@ public class DTMCGFGProduct extends MDPSimple {
         }
 
         actions = uba.getAPSet();
-        if (verbosity >= 2) {
+        if (verbosity >= 3) {
             //mainLog.println("UBA accepting transitions: " + uba.getAccEdges());
-            mainLog.println("Accepting transitions: " + accEdges);
+            //mainLog.println("Accepting transitions: " + accEdges);
             //uba.print_hoa(System.out);
             //mainLog.println("Product: " + this.toString());
             mainLog.println("Labels: " + uba.getAPSet());
@@ -330,142 +331,132 @@ public class DTMCGFGProduct extends MDPSimple {
             }
         }
 
-        if(verbosity >= 2) {
+        if(verbosity >= 3) {
             mainLog.println("equivGFG = " + equivGFG);
         }
 
-        //// generate equivalent LMC states
-        /*
-        Set<Integer> symbols = new HashSet<>(); //alphabet
-        for(int k = 0; k < numAPs; k++ ){
-            if(!labelBS.get(k).isEmpty())
-                symbols.add(k);
+        /// compute equivalent LMC states
+        // Step 0: build dtmc successor map
+
+        Map<Integer, Set<Integer>> symbolMap = new HashMap<>();
+        int index = 0;
+        for(String key: labelStringMap.keySet()){
+            symbolMap.put(index, labelStringMap.get(key));
         }
 
-        LinkedList<Integer> dtmcq = new LinkedList<>();
-        Set<Integer> visitedDTMC = new HashSet<>();
-        HashMap<Integer, HashMap<Integer,BitSet>> succMap = new HashMap<>(); //successors map for dtmc: S x Symbols -> 2^S
-        dtmcq.add(dtmc.getFirstInitialState());
-        while(!dtmcq.isEmpty()){
-            int s = dtmcq.pop();
-            visitedDTMC.add(s);
-            HashMap<Integer,BitSet> succLetterMap = new HashMap<>();
+        HashMap<Integer, HashMap<Integer,Integer>> succMap = new HashMap<>(); //successors map for dtmc: S x Symbols -> 2^S
+        for(int s = 0; s < dtmc.getNumStates(); s++ ){
+            HashMap<Integer,Integer> succLetterMap = new HashMap<>();
             Iterator<Map.Entry<Integer, Double>> iter2 = ((DTMC) dtmc).getTransitionsIterator(s);
             while(iter2.hasNext()){
                 int t = iter2.next().getKey();
-                for(int letter: symbols){
-                    if(!labelBS.get(letter).isEmpty()){
-                        if(labelBS.get(letter).get(t)){
-                           if(succLetterMap.containsKey(letter)){
-                               succLetterMap.get(letter).set(t);
-                           } else{
-                               BitSet bs = new BitSet(dtmc.getNumStates() + 1);
-                               bs.set(letter);
-                               succLetterMap.put(letter, bs);
-                           }
+                for(int letter = 0; letter < symbolMap.size(); letter++){
+                    for(int ap: symbolMap.get(letter)){
+                        if(!labelBS.get(ap).isEmpty()){
+                            if(labelBS.get(ap).get(t)){
+                                succLetterMap.put(letter, t);
+                            }
                         }
                     }
-
                 }
-                if(!visitedDTMC.contains(t)) dtmcq.add(t);
             }
-            for(int letter: symbols) {
+            for(int letter = 0; letter < symbolMap.size(); letter++){
                 if(!succLetterMap.containsKey(letter)){
-                    BitSet bs = new BitSet(dtmc.getNumStates() + 1);
-                    bs.set(dtmc.getNumStates());
-                    succLetterMap.put(letter, bs);
+                    succLetterMap.put(letter, dtmc.getNumStates());
                 }
             }
-                succMap.put(s,succLetterMap);
+            succMap.put(s,succLetterMap);
         }
         {
-            HashMap<Integer, BitSet> succLetterMap = new HashMap<>();
-            for (int letter : symbols) {
-                BitSet bs = new BitSet(dtmc.getNumStates() + 1);
-                bs.set(dtmc.getNumStates());
-                succLetterMap.put(letter, bs);
+            HashMap<Integer, Integer> succLetterMap = new HashMap<>();
+            for(int letter = 0; letter < symbolMap.size(); letter++){
+                succLetterMap.put(letter, dtmc.getNumStates());
             }
             succMap.put(dtmc.getNumStates(),succLetterMap);
         }
+        if(verbosity >= 2) {
+            mainLog.println("succMap = " + succMap.size());
+        }
 
-        HashMap<Integer, HashMap<Integer,BitSet>> prevMap = new HashMap<>(); //prev map for dtmc: S x Symbols -> 2^S
+        // Step 1: Partition states into final and non-final sets
+        Set<Integer> nonFinalStates = new HashSet<>();
+        for (int state = 0; state < dtmc.getNumStates(); state++) {
+                nonFinalStates.add(state);
+        }
 
-        for(int succ: succMap.keySet()){
-            for(int symbol: symbols){
-                HashMap<Integer, BitSet> hm = new HashMap<>();
-                for(int state: succMap.keySet()){
-                    if(succMap.get(state).get(symbol).get(succ)){
-                        if(hm.containsKey(symbol)){
-                            hm.get(symbol).set(state);
-                        }else{
-                            BitSet bs = new BitSet(dtmc.getNumStates()+1);
-                            bs.set(state);
-                            hm.put(symbol, bs);
-                        }
+        Set<Integer> finalStates = new HashSet<>();
+        finalStates.add(dtmc.getNumStates());
+
+        List<Set<Integer>> partitions = new ArrayList<>();
+        partitions.add(finalStates);
+        partitions.add(nonFinalStates);
+
+//        if(verbosity >= 2) {
+//            mainLog.println("partitions = " + partitions);
+//        }
+        // Step 2: Refine partitions using transition-based distinctions
+        Queue<Set<Integer>> workQueue = new LinkedList<>(partitions);
+        while (!workQueue.isEmpty()) {
+            Set<Integer> currentSplitter = workQueue.poll();
+
+            for (int letter = 0; letter < symbolMap.size(); letter++) {
+                Map<Integer, Set<Integer>> reverseTransitions = new HashMap<>();
+                for (int state = 0; state < dtmc.getNumStates()+1; state++) {
+                    int targetState = succMap.get(state).get(letter);
+                    if (currentSplitter.contains(targetState)) {
+                        reverseTransitions.putIfAbsent(state, new HashSet<>());
+                        reverseTransitions.get(state).add(state);
                     }
                 }
-                prevMap.put(succ, hm);
+
+                List<Set<Integer>> newPartitions = new ArrayList<>();
+                for (Set<Integer> partition : partitions) {
+                    Set<Integer> intersect = new HashSet<>();
+                    Set<Integer> difference = new HashSet<>();
+
+                    for (int state : partition) {
+                        if (reverseTransitions.containsKey(state)) {
+                            intersect.add(state);
+                        } else {
+                            difference.add(state);
+                        }
+                    }
+
+                    if (!intersect.isEmpty() && !difference.isEmpty()) {
+                        newPartitions.add(intersect);
+                        newPartitions.add(difference);
+                        workQueue.add(intersect);
+                        workQueue.add(difference);
+                    } else {
+                        newPartitions.add(partition);
+                    }
+                }
+                partitions = newPartitions;
             }
         }
 
-
-
-
-//        equivDTMC = new HashMap<>();
-//        for(int v: visitedDTMC){
-//            BitSet vSucc = succMap.get(v);
-//            BitSet vSet = new BitSet(dtmc.getNumStates());
-//            for(int w: visitedDTMC){
-//                if(succMap.get(w).equals(vSucc)) vSet.set(w);
-//            }
-//            equivDTMC.put(v,vSet);
-//        }
-//
-//        if(verbosity >= 2) {
-//            mainLog.println("equivDTMC = " + equivDTMC);
-//        }
-
-
-        List<BitSet> partitionQueue = new ArrayList<>();;
-
-        /// /////////////////LMC equivalence checking
-        // Step 1: Initialize the partition queue
-        BitSet sink = new BitSet(dtmc.getNumStates() + 1);
-        sink.set(dtmc.getNumStates());
-        partitionQueue.add(sink);
-        splitterIds.add(0);
-        stateMap.put(dtmc.getNumStates(), 0);
-
-        BitSet nonSink = new BitSet(dtmc.getNumStates() + 1);
-        nonSink.set(0,dtmc.getNumStates());
-        partitionQueue.add(nonSink);
-        splitterIds.add(1);
-        for(int i = 0; i < dtmc.getNumStates(); i++ ){
-            stateMap.put(i,1);
-        }
-
-        // Step 2: Refine the partition until it no longer changes
-        while (!splitterIds.isEmpty()) {
-            int splitBlockId = splitterIds.remove(0);
-            BitSet splitBlock = partitionQueue.get(splitBlockId);
-            refinePartition(symbols, prevMap, succMap, splitBlock, partitionQueue);
+        if(verbosity >= 3) {
+            mainLog.println("partitions = " + partitions);
         }
 
         equivDTMC = new HashMap<>();
-        for(int v: stateMap.keySet()){
-            equivDTMC.put(v, partitionQueue.get(stateMap.get(v)));
+        for(int idx = 0; idx < partitions.size(); idx++){
+            for(int s: partitions.get(idx)){
+                equivDTMC.put(s, idx);
+            }
         }
-        */
+
+        /*
         equivDTMC = new HashMap<>();
         for(int s = 0; s < dtmc.getNumStates(); s++){
             BitSet bs = new BitSet(dtmc.getNumStates());
             bs.set(0,dtmc.getNumStates());
             equivDTMC.put(s, bs);
         }
-
+        */
 
         if(verbosity >= 2) {
-            //mainLog.println("equivDTMC = " + equivDTMC);
+            mainLog.println("equivDTMC size = " + partitions.size());
         }
 
     }
@@ -487,7 +478,7 @@ public class DTMCGFGProduct extends MDPSimple {
             size++;
         }
 
-        if (verbosity >= 2) {
+        if (verbosity >= 3) {
             mainLog.println("MCC mapping = "+map);
         }
 
@@ -539,7 +530,7 @@ public class DTMCGFGProduct extends MDPSimple {
             }
         }
 
-        if (verbosity >= 2) {
+        if (verbosity >= 3) {
             mainLog.println("MCC mapping = "+map);
         }
 
@@ -592,7 +583,7 @@ public class DTMCGFGProduct extends MDPSimple {
             size++;
         }
 
-        if (verbosity >= 2) {
+        if (verbosity >= 3) {
             mainLog.println("unknown states mapping = "+map);
         }
 
