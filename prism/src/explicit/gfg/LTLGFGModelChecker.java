@@ -138,25 +138,25 @@ public class LTLGFGModelChecker extends PrismComponent
                 Expression label = apExpressions.get(i);
                 label.typeCheck();
 
-                /*
+
                 if(mc.checkExpression(model, label, null) != null) {
                     BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
                     labelBS.add(labelStates);
                 }else{
                     labelBS.add(new BitSet());
-                }*/
+                }
 
                 /// /////////////////CHEAT!
-
+                /*
                 BitSet labelStates = new BitSet(model.getNumStates());
 
                 for(int s = 0; s < model.getNumStates(); s++){
-                    if (s%4 == i/2){
+                    if (s%3 == i/2){
                         labelStates.set(s);
                     }
                 }
                 labelBS.add(labelStates);
-
+                */
                 /// /////////////////
 
                 //uba.getAPSet().renameAP(i, "L"+i);//do not rename
@@ -800,7 +800,7 @@ public class LTLGFGModelChecker extends PrismComponent
             while(!queue.isEmpty()) {
                 Pair<ProductState, SharedWord<APElement>> entry = queue.poll();
                 ProductState current = entry.first;
-                //if (verbosity >= 2) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
+                if (verbosity >= 2) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
 
                 if (!visited.contains(current)) {
                     SharedWord<APElement> word = entry.second;
@@ -847,8 +847,8 @@ public class LTLGFGModelChecker extends PrismComponent
                                 SharedWord<APElement> curWord = word.append(ap);
 
 
-                                boolean isLeftBis = (leftSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && (equivDTMC.get(product.getDTMCState(probState)) == equivDTMC.get(product.getDTMCState(leftSucc))));
-                                boolean isRightBis = (rightSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& (equivDTMC.get(product.getDTMCState(probState))== equivDTMC.get(product.getDTMCState(rightSucc))));
+                                boolean isLeftBis = (leftSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(leftSucc)) && (Objects.equals(equivDTMC.get(product.getDTMCState(probState)), equivDTMC.get(product.getDTMCState(leftSucc)))));
+                                boolean isRightBis = (rightSucc == probState) || (equivGFG.get(product.getUBAState(probState)) != null && equivGFG.get(product.getUBAState(probState)).get(product.getUBAState(rightSucc))&& (Objects.equals(equivDTMC.get(product.getDTMCState(probState)), equivDTMC.get(product.getDTMCState(rightSucc)))));
 
 
                                 if ((!isLeftBis  && (rightSucc == probState) && !succsForZ.get(leftSucc).isEmpty()) ||

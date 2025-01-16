@@ -153,17 +153,18 @@ public class LTLUBAModelChecker extends PrismComponent
 			for (int i=0; i<uba.getAPSet().size(); i++) {
 				Expression label = apExpressions.get(i);
 				label.typeCheck();
-				//BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+				BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+				/*
 				/// /////////////////CHEAT!
 				BitSet labelStates = new BitSet(model.getNumStates());
 
 				for(int s = 0; s < model.getNumStates(); s++){
-					if (s%4 == i){
+					if (s%uba.getAPSet().size() == i){
 						labelStates.set(s);
 					}
 				}
 				/// /////////////////
-
+				*/
 				labelBS.add(labelStates);
 				uba.getAPSet().renameAP(i, "L"+i);
 			}
