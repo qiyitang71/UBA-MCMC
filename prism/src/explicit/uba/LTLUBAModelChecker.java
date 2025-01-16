@@ -153,7 +153,14 @@ public class LTLUBAModelChecker extends PrismComponent
 			for (int i=0; i<uba.getAPSet().size(); i++) {
 				Expression label = apExpressions.get(i);
 				label.typeCheck();
-				BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+
+				if(mc.checkExpression(model, label, null) != null) {
+					BitSet labelStates = mc.checkExpression(model, label, null).getBitSet();
+					labelBS.add(labelStates);
+				}else{
+					labelBS.add(new BitSet());
+				}
+
 				/*
 				/// /////////////////CHEAT!
 				BitSet labelStates = new BitSet(model.getNumStates());
@@ -165,7 +172,6 @@ public class LTLUBAModelChecker extends PrismComponent
 				}
 				/// /////////////////
 				*/
-				labelBS.add(labelStates);
 				uba.getAPSet().renameAP(i, "L"+i);
 			}
 			if(verbosity >= 2) {
