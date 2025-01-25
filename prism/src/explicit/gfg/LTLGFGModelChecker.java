@@ -9,6 +9,7 @@ import acceptance.AcceptanceReach;
 import acceptance.AcceptanceType;
 import automata.DA;
 import automata.DASimplifyAcceptance;
+import cern.colt.matrix.impl.SparseDoubleMatrix2D;
 import common.IterableBitSet;
 import common.IterableStateSet;
 import common.PathUtil;
@@ -401,7 +402,51 @@ public class LTLGFGModelChecker extends PrismComponent
         StopWatch timerMatrix = new StopWatch(mainLog);
         timerMatrix.start("building positivity matrix");
         Map<Integer, Integer> map = new LinkedHashMap<Integer, Integer>();
-        DoubleMatrix2D sccMatrix = product.getProduct().positivityMatrixForMCC(mcc, map, false);
+        //DoubleMatrix2D sccMatrix = product.getProduct().positivityMatrixForMCC(mcc, map, false);
+
+
+        Map<Integer, Integer> equivMap = new LinkedHashMap<Integer, Integer>();
+
+        int size = 0;
+        for (int i : IterableBitSet.getSetBits(mcc)) {
+            int ubaState = prod.getUBAState(i);
+            int lmcState = prod.getDTMCState(i);
+            boolean isSet = false;
+            for (Entry<Integer, Integer> states : map.entrySet()) {
+                int s = states.getKey();
+                if(equivGFG.containsKey(ubaState) && equivGFG.get(ubaState).get(prod.getUBAState(s)) && (equivDTMC.get(lmcState) == equivDTMC.get(prod.getDTMCState(s)))){
+                    equivMap.put(i, map.get(s));
+                    isSet = true;
+                    break;
+                }
+            }
+            if(!isSet){
+                map.put(i, size);
+                equivMap.put(i, size);
+                size++;
+            }
+        }
+
+        if (verbosity >= 3) {
+            mainLog.println("MCC mapping = "+map);
+        }
+
+        //DoubleMatrix2D matrix = new SparseDoubleMatrix2D(size,size);
+        DoubleMatrix2D sccMatrix = new SparseDoubleMatrix2D(size,size);
+        for (Entry<Integer, Integer> states : map.entrySet()) {
+            int from = states.getKey();
+            for(int c = 0; c < prod.getNumChoices(from); c++) {
+                for (Iterator<Entry<Integer, Double>> it = prod.getTransitionsIterator(from,c); it.hasNext(); ) {
+                    Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
+                    if (mcc.get(to)) {
+                        int matrixTo = equivMap.get(to);
+                        sccMatrix.setQuick(map.get(from), matrixTo, sccMatrix.get(map.get(from),matrixTo)+ probMove.getValue());
+                    }
+                }
+            }
+        }
+
         assert(sccMatrix.rows() == sccMatrix.columns());
         assert(sccMatrix.rows() == mcc.cardinality());
         if (verbosity >= 1) {
@@ -427,8 +472,8 @@ public class LTLGFGModelChecker extends PrismComponent
         }
 
         // do iterations
-        int n = mcc.cardinality();
-
+        //int n = mcc.cardinality();
+        int n = size;
         int maxIters = Integer.MAX_VALUE;//getSettings().getInteger(PrismSettings.PRISM_MAX_ITERS);
         boolean absolute = (getSettings().getString(PrismSettings.PRISM_TERM_CRIT).equals("Absolute"));
         double epsilon = getSettings().getDouble(PrismSettings.PRISM_TERM_CRIT_PARAM);
@@ -508,7 +553,7 @@ public class LTLGFGModelChecker extends PrismComponent
         // we have to weight the values...
         double sumCut = 0.0;
         for (int productIndex : cut) {
-            int solutionIndex = map.get(productIndex);
+            int solutionIndex = map.get(equivMap.get(productIndex));
             sumCut += oldX.getQuick(solutionIndex);
         }
         double alpha = 1 / sumCut;
@@ -977,10 +1022,7 @@ public class LTLGFGModelChecker extends PrismComponent
             }
 
             return C;
-
-
     }
-
 
     /**
      * Validates that the atomic propositions
