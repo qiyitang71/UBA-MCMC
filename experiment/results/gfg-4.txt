@@ -1,0 +1,82 @@
+Transforming to GFG-NCA gfg-4 ...
+The UBA is unambiguous but not deterministic
+The max outgoing degree is 2
+Minimising DCA
+UBA has 16 states
+Computing safe components
+Computing language equivalence
+Now normalise DCA
+Computing subsafe language equivalence
+Now safe centralise DCA
+Now safe minimise DCA
+Now output DCAs
+GfG-NCA has 6 states
+0.019
+Automata Transformation Complete!
+
+PRISM
+=====
+
+Version: 4.4.dev
+Date: Fri Apr 11 22:46:22 BST 2025
+Hostname: Qiyis-Air.home
+Memory limits: cudd=1g, java(heap)=100g
+Command line: prism -javamaxmem 100g -javastack 1g -timeout 30m -explicit -gfgmc -ubaverbosity 1 -gfgpower random_lmc.pm -pf 'P=?[ HOA: {"GFGs/gfg-4.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash","dollar_0" <- "dollar" }]'
+
+Parsing model file "random_lmc.pm"...
+
+1 property:
+(1) P=? [ HOA: { "GFGs/gfg-4.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash", "dollar_0" <- "dollar" } ]
+
+Type:        DTMC
+Modules:     random 
+Variables:   s 
+
+---------------------------------------------------------------------
+
+Model checking: P=? [ HOA: { "GFGs/gfg-4.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash", "dollar_0" <- "dollar" } ]
+
+Building model...
+
+Computing reachable states... 894 states
+Reachable states exploration and model construction done in 0.077 secs.
+Sorting reachable states list...
+
+Time for model construction: 0.099 seconds.
+
+Type:        DTMC
+States:      894 (1 initial)
+Transitions: 2247
+Running DTMC GFG Model Checking...
+Parsing and constructing HOA automaton for HOA: { "GFGs/gfg-4.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash", "dollar_0" <- "dollar" }
+Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/experiment/GFGs/gfg-4.hoa...
+Determining states satisfying atomic proposition expressions of the automaton...
+GFG has 6 states.
+Time for GFG translation: 0.044 seconds.
+Time for computing GFG-DTMC product: 0.241 seconds,  (product has 5364 states).
+Time for computing MCC in GFG-DTMC product: 0.081 seconds,  (found 2 non-trivial MCCs).
+
+MCC 1 has 894 states
+Time for checking whether SCC 1 is positive and computing eigenvector: 0.0 seconds,  (MCC is zero, no accepting edges).
+
+MCC 2 has 3904 states
+Time for building positivity matrix: 0.042 seconds.
+Time for checking whether SCC 2 is positive and computing eigenvector: 0.088 seconds,  (SCC is positive, 94 iterations).
+Time for generating cut: 1.314 seconds,  (2 iterations, 44767 extension checks, cut tempC has 5 states).
+Time for generating cut: 1.744407983742E9 seconds,  (2 iterations, 44767 extension checks, cut C has 2 states).
+Weighing the eigenvector with alpha = 1.8110181427408698 to obtain probabilities
+Sum of probabilities for the cut C = 1.0 for SCC 2
+Probabilities in SCC 2 are in the range [0.13957951604692836,2.051880027575062]
+Time for computing MCC probabilities for positive MCCs: 1.418 seconds,  (1 positive MCCs, known probabilities for 571 states).
+Calculating predecessor relation for Markov decision process...  done (0.032 seconds)
+Time for determining states with probability zero: 0.039 seconds,  (1460 zero prob. states, 3333 remaining unknown).
+Starting value iteration (with Gauss-Seidel)...
+Value iteration (with Gauss-Seidel) took 34 iterations, 583814 multiplications and 0.047 seconds.
+Time for solving linear equation system for remaining unknown states (GS): 0.073 seconds.
+
+Value in the initial state: 1.0
+
+Time for model checking: 1.929 seconds.
+
+Result: 1.0 (value in the initial state)
+

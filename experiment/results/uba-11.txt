@@ -1,0 +1,42 @@
+Generating uba-11 ...
+PRISM
+=====
+
+Version: 4.4.dev
+Date: Fri Apr 11 22:49:44 BST 2025
+Hostname: Qiyis-Air.home
+Memory limits: cudd=1g, java(heap)=100g
+Command line: prism -javamaxmem 100g -javastack 1g -timeout 30m -explicit -ltluba -ubaverbosity 1 -ubapower random_lmc.pm -pf 'P=?[ HOA: {"UBAs/uba-11.hoa", "sigma" <- "sigma", "pi" <- "pi", "hash" <- "hash", "dollar" <- "dollar"}]'
+
+Parsing model file "random_lmc.pm"...
+
+1 property:
+(1) P=? [ HOA: { "UBAs/uba-11.hoa", "sigma" <- "sigma", "pi" <- "pi", "hash" <- "hash", "dollar" <- "dollar" } ]
+
+Type:        DTMC
+Modules:     random 
+Variables:   s 
+
+---------------------------------------------------------------------
+
+Model checking: P=? [ HOA: { "UBAs/uba-11.hoa", "sigma" <- "sigma", "pi" <- "pi", "hash" <- "hash", "dollar" <- "dollar" } ]
+
+Building model...
+
+Computing reachable states... 894 states
+Reachable states exploration and model construction done in 0.082 secs.
+Sorting reachable states list...
+
+Time for model construction: 0.112 seconds.
+
+Type:        DTMC
+States:      894 (1 initial)
+Transitions: 2247
+Parsing and constructing HOA automaton for HOA: { "UBAs/uba-11.hoa", "sigma" <- "sigma", "pi" <- "pi", "hash" <- "hash", "dollar" <- "dollar" }
+Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/experiment/UBAs/uba-11.hoa...
+Determining states satisfying atomic proposition expressions of the automaton...
+UBA has 2047 states.
+Time for UBA translation: 0.187 seconds.
+statesOfInterest: {0}
+s_labels: {0}
+LMC state = 0, destinations ={0, 2}
