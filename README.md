@@ -95,7 +95,7 @@ make
 
 We compare our method with the state-of-the-art JCSS19 artifact ([link](https://wwwtcs.inf.tu-dresden.de/ALGI/TR/JCSS19/)).
 
-From the `artifact` directory, run:
+Go to the `artifact` directory:
 
 ```bash
 cd ../artifact
