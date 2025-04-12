@@ -1,0 +1,66 @@
+PRISM
+=====
+
+Version: 4.4.dev
+Date: Sat Apr 12 11:36:57 BST 2025
+Hostname: Qiyis-Air.home
+Memory limits: cudd=1g, java(heap)=100g
+Command line: prism -javamaxmem 100g -javastack 1g -timeout 30m -explicit -gfgmc -ubaverbosity 1 -gfgpower random_lmc.pm -pf 'P=?[ HOA: {"GFGs/gfg-3.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash","dollar_0" <- "dollar" }]'
+
+Parsing model file "random_lmc.pm"...
+
+1 property:
+(1) P=? [ HOA: { "GFGs/gfg-3.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash", "dollar_0" <- "dollar" } ]
+
+Type:        DTMC
+Modules:     random 
+Variables:   s 
+
+---------------------------------------------------------------------
+
+Model checking: P=? [ HOA: { "GFGs/gfg-3.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash", "dollar_0" <- "dollar" } ]
+
+Building model...
+
+Computing reachable states... 894 states
+Reachable states exploration and model construction done in 0.084 secs.
+Sorting reachable states list...
+
+Time for model construction: 0.105 seconds.
+
+Type:        DTMC
+States:      894 (1 initial)
+Transitions: 2247
+Running DTMC GFG Model Checking...
+Parsing and constructing HOA automaton for HOA: { "GFGs/gfg-3.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash", "dollar_0" <- "dollar" }
+Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/artifact/GFGs/gfg-3.hoa...
+Determining states satisfying atomic proposition expressions of the automaton...
+GFG has 5 states.
+Time for GFG translation: 0.028 seconds.
+Time for computing GFG-DTMC product: 0.191 seconds,  (product has 3910 states).
+Time for computing MCC in GFG-DTMC product: 0.08 seconds,  (found 2 non-trivial MCCs).
+
+MCC 1 has 894 states
+Time for checking whether SCC 1 is positive and computing eigenvector: 0.0 seconds,  (MCC is zero, no accepting edges).
+
+MCC 2 has 2539 states
+Time for building positivity matrix: 0.04 seconds.
+Time for checking whether SCC 2 is positive and computing eigenvector: 0.063 seconds,  (SCC is positive, 94 iterations).
+Time for generating cut: 0.754 seconds,  (2 iterations, 18564 extension checks, cut tempC has 2 states).
+Time for generating cut: 1.744454218316E9 seconds,  (2 iterations, 18564 extension checks, cut C has 2 states).
+Weighing the eigenvector with alpha = 1.8110181427408698 to obtain probabilities
+Sum of probabilities for the cut C = 1.0 for SCC 2
+Probabilities in SCC 2 are in the range [0.13957951604692834,2.054144076442257]
+Time for computing MCC probabilities for positive MCCs: 0.836 seconds,  (1 positive MCCs, known probabilities for 571 states).
+Calculating predecessor relation for Markov decision process...  done (0.016 seconds)
+Time for determining states with probability zero: 0.023 seconds,  (1371 zero prob. states, 1968 remaining unknown).
+Starting value iteration (with Gauss-Seidel)...
+Value iteration (with Gauss-Seidel) took 34 iterations, 348602 multiplications and 0.032 seconds.
+Time for solving linear equation system for remaining unknown states (GS): 0.052 seconds.
+
+Value in the initial state: 1.0
+
+Time for model checking: 1.243 seconds.
+
+Result: 1.0 (value in the initial state)
+
