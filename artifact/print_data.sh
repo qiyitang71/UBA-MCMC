@@ -24,8 +24,8 @@ for i in {3..12}; do
   gfg_states=$(echo "$gfg_info" | sed -n 's/.*#states = \([0-9]*\).*/\1/p')
   gfg_product=$(echo "$gfg_info" | sed -n 's/.*#product = \([0-9]*\).*/\1/p')
   gfg_total_time=$(echo "$gfg_info" | sed -n 's/.*total_time = \([0-9]*\.[0-9]*\) s.*/\1/p')
-  gfg_trans_time=$(echo "$gfg_info" | sed -n 's/.*\([0-9]*\.[0-9]*\) (trans).*/\1/p')
-  gfg_mc_time=$(echo "$gfg_info" | sed -n 's/.*\([0-9]*\.[0-9]*\) (mc).*/\1/p')
+  gfg_trans_time=$(echo "$gfg_info" | sed -n 's/.*: \([0-9]*\.[0-9]*\) (trans).*/\1/p')
+  gfg_mc_time=$(echo "$gfg_info" | sed -n 's/.*, \([0-9]*\.[0-9]*\) (mc).*/\1/p')
 
   # Print the table row with the value of n (i)
   printf "| %-2s | %-10s | %-8s | %-8s | %-10s | %-8s | %-10s | %-10s | %-8s |\n" \
