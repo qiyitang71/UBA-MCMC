@@ -1,24 +1,8 @@
-Transforming to GFG-NCA gfg-3 ...
-The UBA is unambiguous but not deterministic
-The max outgoing degree is 2
-Minimising DCA
-UBA has 8 states
-Computing safe components
-Computing language equivalence
-Now normalise DCA
-Computing subsafe language equivalence
-Now safe centralise DCA
-Now safe minimise DCA
-Now output DCAs
-GfG-NCA has 5 states
-0.059
-Automata Transformation Complete!
-
 PRISM
 =====
 
 Version: 4.4.dev
-Date: Fri Apr 11 22:46:17 BST 2025
+Date: Sat Apr 12 10:00:34 BST 2025
 Hostname: Qiyis-Air.home
 Memory limits: cudd=1g, java(heap)=100g
 Command line: prism -javamaxmem 100g -javastack 1g -timeout 30m -explicit -gfgmc -ubaverbosity 1 -gfgpower random_lmc.pm -pf 'P=?[ HOA: {"GFGs/gfg-3.hoa", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash","dollar_0" <- "dollar" }]'
@@ -39,7 +23,7 @@ Model checking: P=? [ HOA: { "GFGs/gfg-3.hoa", "sigma_0" <- "sigma", "pi_0" <- "
 Building model...
 
 Computing reachable states... 894 states
-Reachable states exploration and model construction done in 0.076 secs.
+Reachable states exploration and model construction done in 0.073 secs.
 Sorting reachable states list...
 
 Time for model construction: 0.093 seconds.
@@ -52,31 +36,31 @@ Parsing and constructing HOA automaton for HOA: { "GFGs/gfg-3.hoa", "sigma_0" <-
 Reading HOA automaton from /Users/qiyitang/Documents/UBA-MCMC/experiment/GFGs/gfg-3.hoa...
 Determining states satisfying atomic proposition expressions of the automaton...
 GFG has 5 states.
-Time for GFG translation: 0.043 seconds.
-Time for computing GFG-DTMC product: 0.184 seconds,  (product has 4470 states).
+Time for GFG translation: 0.038 seconds.
+Time for computing GFG-DTMC product: 0.198 seconds,  (product has 3910 states).
 Time for computing MCC in GFG-DTMC product: 0.059 seconds,  (found 2 non-trivial MCCs).
 
 MCC 1 has 894 states
 Time for checking whether SCC 1 is positive and computing eigenvector: 0.0 seconds,  (MCC is zero, no accepting edges).
 
-MCC 2 has 3067 states
-Time for building positivity matrix: 0.045 seconds.
-Time for checking whether SCC 2 is positive and computing eigenvector: 0.079 seconds,  (SCC is positive, 94 iterations).
-Time for generating cut: 1.256 seconds,  (2 iterations, 29897 extension checks, cut tempC has 4 states).
-Time for generating cut: 1.744407977978E9 seconds,  (2 iterations, 29897 extension checks, cut C has 2 states).
+MCC 2 has 2539 states
+Time for building positivity matrix: 0.032 seconds.
+Time for checking whether SCC 2 is positive and computing eigenvector: 0.054 seconds,  (SCC is positive, 94 iterations).
+Time for generating cut: 0.618 seconds,  (2 iterations, 18564 extension checks, cut tempC has 2 states).
+Time for generating cut: 1.744448435109E9 seconds,  (2 iterations, 18564 extension checks, cut C has 2 states).
 Weighing the eigenvector with alpha = 1.8110181427408698 to obtain probabilities
 Sum of probabilities for the cut C = 1.0 for SCC 2
-Probabilities in SCC 2 are in the range [0.13957951604692836,2.051880027575062]
-Time for computing MCC probabilities for positive MCCs: 1.35 seconds,  (1 positive MCCs, known probabilities for 571 states).
-Calculating predecessor relation for Markov decision process...  done (0.019 seconds)
-Time for determining states with probability zero: 0.053 seconds,  (1403 zero prob. states, 2496 remaining unknown).
+Probabilities in SCC 2 are in the range [0.13957951604692834,2.054144076442257]
+Time for computing MCC probabilities for positive MCCs: 0.687 seconds,  (1 positive MCCs, known probabilities for 571 states).
+Calculating predecessor relation for Markov decision process...  done (0.026 seconds)
+Time for determining states with probability zero: 0.032 seconds,  (1371 zero prob. states, 1968 remaining unknown).
 Starting value iteration (with Gauss-Seidel)...
-Value iteration (with Gauss-Seidel) took 34 iterations, 432310 multiplications and 0.032 seconds.
-Time for solving linear equation system for remaining unknown states (GS): 0.055 seconds.
+Value iteration (with Gauss-Seidel) took 34 iterations, 348602 multiplications and 0.032 seconds.
+Time for solving linear equation system for remaining unknown states (GS): 0.05 seconds.
 
 Value in the initial state: 1.0
 
-Time for model checking: 1.776 seconds.
+Time for model checking: 1.101 seconds.
 
 Result: 1.0 (value in the initial state)
 
