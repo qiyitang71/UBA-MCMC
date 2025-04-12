@@ -5,6 +5,17 @@ UBA-MCMC is distributed under the MIT license.
 
 ## Load Docker Container
 Assume Docker is already installed.
+Load the docker image:
+```
+docker load uba-mcmc.tar.gz
+```
+
+Once the image is loaded, check that it has been successfully added:
+```
+docker images
+```
+
+Run a docker container from the image:
 ```
 docker run -it uba-mcmc
 ```
