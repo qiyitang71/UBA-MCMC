@@ -94,6 +94,8 @@ State: 3
 
 Our tool includes two components: automata transformation (`uba2pba`) and GfG model checking (`prism-gfg`).
 
+Asseum that we are inside `artifact` directory.
+
 First, compile `uba2pba`:
 
 ```bash
@@ -171,6 +173,8 @@ Output: #states = 5, #product = 3910, total_time = 1.182 s: 0 (trans), 1.182 (mc
 
 ## Full Experiments
 
+Asseum that we are inside `artifact` directory.
+
 To reproduce the full benchmark results:
 
 ```bash
@@ -195,6 +199,8 @@ exit
 ```
 
 ## Model Checking Another Random Markov Chain
+
+Asseum that we are inside `artifact` directory.
 
 Generate a new Markov chain:
 
