@@ -29,6 +29,22 @@ Run the container:
 sudo docker run -it uba-mcmc
 ```
 
+After the container starts, you should be placed in the default working directory:
+```
+/workspace
+```
+
+## Directory Structure
+
+Inside this directory, you will find the following three key folders:
+
+- `artifact` Contains all scripts needed to generate benchmarks and replicate the experimental results reported in our paper.
+
+ 
+- `uba2pba` Contains the source code for converting an unambiguous Büchi automaton into a probabilistic Büchi automaton, as described in our paper. This tool is built on top of [Spot library](https://spot.lre.epita.fr/).
+
+- `prism` Contains the source code for our model checking tool, `prism-gfg`, which is built on top of [PRISM model checker](https://www.prismmodelchecker.org/). The core implementation of our model checking algorithm can be found in `prism/src/explicit/gfg`.
+
 ## Benchmarks
 
 The random labelled Markov chain used to reproduce the results is:
