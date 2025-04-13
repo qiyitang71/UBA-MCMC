@@ -1,38 +1,70 @@
 # Artifact for Paper 151
 
-In this artifact, you can find the souce code of our tool [UBA-MCMC](https://github.com/qiyitang71/UBA-MCMC) that models check Markov chain against unambiguous Buchi automata (UBA) specifications.
+This artifact provides the source code for our tool, [UBA-MCMC](https://github.com/qiyitang71/UBA-MCMC), which performs model checking of Markov chains against unambiguous Büchi automata (UBA) specifications.  
 UBA-MCMC is distributed under the GNU General Public License (GPL) v2.
 
 ## Load Docker Container
-Assume Docker is already installed. Otherwise, install [Docker](https://www.docker.com/get-started/).
-NOTE: you typically need *root* access to run Docker commands. 
-Load the docker image:
-```
-sudo docker load uba-mcmc.tar.gz
-```
-or
-```
+
+Ensure [Docker](https://www.docker.com/get-started/) is installed.  
+**Note:** Docker commands typically require **root** access.
+
+Load the Docker image:
+
+```bash
+sudo docker load < uba-mcmc.tar.gz
+# or
 sudo docker load -i uba-mcmc.tar.gz
 ```
-Once the image is loaded, check that it has been successfully added:
-```
+
+Check the image has been loaded:
+
+```bash
 sudo docker images
 ```
+You should see `uba-mcmc` in the image list.
 
-Run a docker container from the image:
-```
+Run the container:
+
+```bash
 sudo docker run -it uba-mcmc
 ```
 
-## Benchmarks
-The random labelled Markov chain to reproduce the results in the paper is `./artifact/random_lmc.pm`.
-The set of benchmarks (UBAs) we used for the experiments are generated on the fly and stored in [UBAs](./artifact/UBAs/) directory.
-
-#### File input format
-All automata are written in Hanoi Omega Automaton [HOA format](https://adl.github.io/hoaf/). 
-
-An example automaton is given below:
+After the container starts, you should be placed in the default working directory:
 ```
+/workspace
+```
+
+## Directory Structure
+
+Inside this directory, you will find the following three key folders:
+
+- `artifact` Contains all scripts needed to generate benchmarks and replicate the experimental results reported in our paper.
+
+ 
+- `uba2pba` Contains the source code for converting an unambiguous Büchi automaton into a probabilistic Büchi automaton, as described in our paper. This tool is built on top of [Spot library](https://spot.lre.epita.fr/).
+
+- `prism` Contains the source code for our model checking tool, `prism-gfg`, which is built on top of [PRISM model checker](https://www.prismmodelchecker.org/). The core implementation of our model checking algorithm can be found in `prism/src/explicit/gfg`.
+
+## Benchmarks
+
+The random labelled Markov chain used to reproduce the results is:
+
+```
+./artifact/random_lmc.pm
+```
+
+The set of benchmarks (UBAs) are generated on the fly and stored in:
+
+```
+./artifact/UBAs/
+```
+
+### File Input Format
+
+All automata are written in the [HOA format](https://adl.github.io/hoaf/).  
+An example automaton is shown below:
+
+```hoa
 HOA: v1
 name: "FGa"
 States: 4
@@ -57,61 +89,82 @@ State: 3
 [t] 3
 --END--
 ```
-The HOA format starts with the version (HOA: v1) and the automaton's name (name: "FGa"). 
-It then specifies the number of states (States: 4) and the initial state (Start: 0). 
-The atomic propositions (AP) are listed, e.g., AP: 1 "a". 
-The acceptance condition is defined with acc-name: Buchi and Acceptance: 1 Inf(0), meaning state 0 must be visited infinitely often. 
-Properties such as trans-labels and complete define the automaton's structure and behavior. 
-The transitions are described in the --BODY--, with each state’s outgoing transitions labeled by boolean formulas that describe the conditions under which the automaton moves between states.
 
 ## Installation
-Our tool as explained in the paper is of two components: automata transformation (uba2pba) and GfG model checking (prism-gfg). 
-First, go to the directory for uba2pba and compile it:
-```
+
+Our tool includes two components: automata transformation (`uba2pba`) and GfG model checking (`prism-gfg`).
+
+Assume that we are inside `artifact` directory.
+
+First, compile `uba2pba`:
+
+```bash
 cd uba2pba
 make
 ```
-Second, go to the directory for prism-gfg and compile it:
-```
+After compilation, the executable file `uba2pba` should appear in the directory.
+
+The tool `uba2pba` accepts a unambiguous Büchi automaton as input, determinises it using extra symbols and then minimises the deterministic automaton to a good-for-games (GfG) co-Büchi automaton.
+The GfG co-Büchi automaton is subsequently seen as a Büchi automaton.
+The nondeterminism in the resultant Büchi automaton can be resolved randomly, so it is used as a probabilistic Büchi automaton in our subsequent Mrkov chain model checking procedure.
+
+Note that we write the probabilistic Büchi automaton to a file in the standard [HOA format](https://adl.github.io/hoaf/), omitting probabilities on transitions, as the nondeterminism can be resolved randomly as described above.
+
+
+Then compile `prism-gfg`:
+
+```bash
 cd ../prism
 make
 ```
+**Note** During the compilation processs, warning messages may appear, but the tool will still compile successfully. 
+
+The executable file is `bin/prism`.
+
+Our tool `prism-gfg` takes as input a Markov chain and a probabilistic Büchi automaton (PBA) and computes the probability that a word generated by the Markov chain belongs to the language recognised by the PBA.
 
 ## Smoke Tests
-We compare with the state of the art tool for Markov chain model checking against UBA specifications, [Artifact of JCSS19](https://wwwtcs.inf.tu-dresden.de/ALGI/TR/JCSS19/).
 
-To test whether all tools have been installed correctly, we can do the following under the **artifact** directory.
-```
+We compare our method with the state-of-the-art JCSS19 artifact ([link](https://wwwtcs.inf.tu-dresden.de/ALGI/TR/JCSS19/)).
+
+Go to the `artifact` directory:
+
+```bash
 cd ../artifact
-
 ```
 
-1. Test JCSS19 Artifact:
-```
+1. Test JCSS19:
+
+```bash
 ./test_jcss19.sh
 ```
-The JCSS19 artifact takes as input the Markov chain *random-lmc.pm* and the UBA *uba-3.hoa* generated by our uba generator by running `uba-gen.py 3` and outputs the model checking results to *results/uba-3.txt*.
-The results are also reported on terminal (time might vary):
+
+Expected output:
+
 ```
 Generating UBA ...
 UBA Model Checking uba-3 ...
 Output: #states = 7, #product = 3779, time = 0.327 s
-```  
-
-2. Test Automata Transformation (uba2pba):
 ```
+
+**Note** The running time can vary on different machines, the number of states in the UBA and the product should remain the same.
+
+2. Test `uba2pba`:
+
+```bash
 ./test_transformation.sh
 ```
-The tool uba2pba takes as input the UBA *uba-3.hoa* by our uba generator by running `uba-gen.py 3`, and perform automata transformations to obtain a minimal GfG automata.
-The result is GfG automaton in HOA format, `GFGs/gfg-3.hoa`.
+This script converts the unambiguous Büchi automaton (UBA) specified in `UBAs/uba-3.hoa` to a PBA, and saves the result to `GFGs/gfg-3.hoa`.
 
+3. Test GfG model checking:
 
-3. Test GfG model checking (prism-gfg):
-```
+```bash
 ./test_gfg.sh
 ```
-The tool extended the PRISM model checker takes as input the Markov chain *random-lmc.pm* and the GfG automaton *gfg-3.hoa* generated by our GfG generator by running `gfg-gen.py 3` and outputs the model checking results to *results/gfg-3.txt*.
-The results are also reported on terminal (time might vary):
+This script performs model checking of the Markov chain defined in `random_lmc.pm` aginst the specification given by the PBA in `GFGs/gfg-3.hoa`. 
+
+Expected output (time may vary):
+
 ```
 Generating GfG automaton ...
 GFG Model Checking gfg-3 ...
@@ -120,56 +173,72 @@ Output: #states = 5, #product = 3910, total_time = 1.182 s: 0 (trans), 1.182 (mc
 
 ## Full Experiments
 
-To run all the experiments reported in this paper, use the following command:
-```
+Assume that we are inside `artifact` directory.
+
+To reproduce the full benchmark results:
+
+```bash
 ./run.sh
 ```
-This set of benchmarks should take around **2 hours** to complete.
-All results are stored in the directory `./results`.
 
+This may take around **2 hours**. Results are saved in `./results`.
 
-To show results, use the following command:
-```
+To print the results:
+
+```bash
 ./print_data.sh
 ```
-The results can be compared with Table 1. While execution time may vary, the overall trend should be consistent: starting from `n = 8`, our algorithm outperforms JCSS19. 
-Our experiments are memory-intensive, and depending on the machine used for evaluation, results may not be available for larger `n` values. However, JCSS19 is likely to run out of memory or time before any issues occur with our algorithm.
 
-Exit docker:
+The results can be compared with **Table 1** in the paper. While timings may vary, the trend remains: from `n = 8`, our algorithm outperforms JCSS19.  
+Due to memory demands, JCSS19 may run out of resources before our method encounters issues.
+
+To cross check results (the probabilities obtained by the two algorithms):
+ ```bash
+./cross_check.sh
 ```
+This script compares the probabilities computed by the JCSS19 algorithm and our algorithm for values of `n` ranging from 3 to 12.
+The results are expected to match for all values of `n` where both algorithms complete successfully. 
+
+Example output:
+```
+Skipping n = 10, jcss19 did not complete
+Skipping n = 11, jcss19 did not complete
+Skipping n = 12, jcss19 did not complete
+All match!
+```
+
+To exit Docker:
+
+```bash
 exit
 ```
-to complete the evaluation.
 
 ## Model Checking Another Random Markov Chain
-We randomly generate a Markov chain:
-```
+
+Assume that we are inside `artifact` directory.
+
+Generate a new Markov chain:
+
+```bash
 python3 dtmc-gen.py lmc-test.pm
 ```
-Run our algorithm to model check it against one of our benchmarks `gfg-3.hoa`:
-```
+
+Run model checking:
+
+```bash
 ../prism/bin/prism -javamaxmem 100g -javastack 1g -timeout 30m -explicit -gfgmc -ubaverbosity 1 -gfgpower lmc-test.pm -pf 'P=?[ HOA: {"'"GFGs/gfg-3.hoa"'", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash","dollar_0" <- "dollar" }]'
 ```
-The results will shown be on terminal.
 
-
-## Build Docker Container
-Pull code from github:
-```
-git pull https://github.com/qiyitang71/UBA-MCMC.git
-```
-Build docker container:
-```
-cd UBA-MCMC
-sudo docker build -t uba-mcmc .
-``` 
 ## Remove Docker Container
-List all Docker containers:
-```
+
+List containers:
+
+```bash
 sudo docker ps -a
 ```
 
-Find the container id you would like to remove:
-```
+Remove a container:
+
+```bash
 sudo docker rm <container_id>
 ```
