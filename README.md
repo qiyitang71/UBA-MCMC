@@ -195,7 +195,7 @@ Due to memory demands, JCSS19 may run out of resources before our method encount
 You can check the computed probabilities using the following command:
 
 ```bash
-grep "Result:" $logfile || echo "No result: experiment does not complete"
+grep "Result:" $logfile
 ```
 
 Replace `$logfile` with the path to a result file in the `./results` directory. All results (probabilities) are expected to be one.
