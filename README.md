@@ -192,20 +192,27 @@ To print the results:
 The results can be compared with **Table 1** in the paper. While timings may vary, the trend remains: from `n = 8`, our algorithm outperforms JCSS19.  
 Due to memory demands, JCSS19 may run out of resources before our method encounters issues.
 
-To cross check results (the probabilities obtained by the two algorithms):
- ```bash
-./cross_check.sh
-```
-This script compares the probabilities computed by the JCSS19 algorithm and our algorithm for values of `n` ranging from 3 to 12.
-The results are expected to match for all values of `n` where both algorithms complete successfully. 
+You can check the computed probabilities using the following command:
 
-Example output:
+```bash
+grep "Result:" $logfile || echo "No result: experiment does not complete"
 ```
-Skipping n = 10, jcss19 did not complete
-Skipping n = 11, jcss19 did not complete
-Skipping n = 12, jcss19 did not complete
-All match!
+
+Replace `$logfile` with the path to a result file in the `./results` directory. All results (probabilities) are expected to be one.
+
+An example:
+
+```bash
+grep "Result:" ./results/gfg-3.txt
 ```
+
+If the file contains a result, the output will look like:
+
+```
+Result: 1.0 (value in the initial state)
+```
+
+If the experiment did not complete successfully (e.g., due to a timeout or running out of memory), no output will be printed from `grep`.
 
 To exit Docker:
 
