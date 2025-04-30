@@ -181,7 +181,7 @@ To reproduce the full benchmark results:
 ./run.sh
 ```
 
-This may take around **2 hours**. Results are saved in `./results`.
+This may take around **2 hours**. However, on most machines, the experiments will finish within 10 minutes. Results are saved in `./results`.
 
 To print the results:
 
@@ -205,6 +205,24 @@ Skipping n = 10, jcss19 did not complete
 Skipping n = 11, jcss19 did not complete
 Skipping n = 12, jcss19 did not complete
 All match!
+```
+
+To check correctness of the implementation:
+ ```bash
+./check_correctness.sh 3
+```
+The script will generate *3* random LMCs and compare the probabilities computed by the JCSS19 algorithm and our algorithm, and check whether the probabilities are within `epsilon=0.00001` difference.
+You can change the number of random LMCs to any positive integer.
+
+Example output:
+```
+Check LMC 0...
+1.0, 1.0
+Check LMC 1...
+0.0, 0.0
+Check LMC 2...
+0.9999987057296094, 1.0
+All 3 random LMCs match!
 ```
 
 To exit Docker:

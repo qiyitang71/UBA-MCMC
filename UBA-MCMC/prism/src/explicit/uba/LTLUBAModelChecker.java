@@ -74,7 +74,7 @@ public class LTLUBAModelChecker extends PrismComponent
 			 return prod;
 		}
 
-		public HashMap<Integer, MyBitSet> getAccEdges() {
+		public HashMap<Integer, Set<APElement>> getAccEdges() {
 			return prod.getAccEdges();
 		}
 		
@@ -100,7 +100,7 @@ public class LTLUBAModelChecker extends PrismComponent
 
 	/** The underlying model checker */
 	private ProbModelChecker mc;
-	
+	protected GFG uba;
 	private int verbosity = 0;
 	
 	private boolean sanityCheck = false;
@@ -205,7 +205,7 @@ public class LTLUBAModelChecker extends PrismComponent
 		if(isUFA) {
 			mainLog.println("UBA is actually an (upward-closed) UFA");
 		}
-
+		this.uba = uba;
 		return uba;
 	}
 	
@@ -386,16 +386,24 @@ public class LTLUBAModelChecker extends PrismComponent
 		timer.start("checking whether SCC " + sccIndex + " is positive and computing eigenvector");
 		// first, check that SCC intersects accepting edges
 		DTMCUBAProduct prod = product.getProduct();
-		HashMap<Integer, MyBitSet>  accEdges = product.getAccEdges();
+		HashMap<Integer, Set<APElement>>  accEdges = product.getAccEdges();
 		// first, check that MCC intersects accepting edges
 		boolean acc = false;
 		for (int state : new IterableStateSet(scc, prod.getNumStates())) {
-			MyBitSet set = accEdges.get(state);
+			Set<APElement> set = accEdges.get(state);
 			if(set == null) continue;
-			if(scc.intersects(set)){
-				acc = true;
-				break;
+			for(APElement ap: set){
+				int letter = Integer.parseInt(uba.getAPSet().getAP(ap.nextSetBit(0)).substring(1));
+
+				for(int i: prod.getProbStatesSuccessors(state)) {
+					if(!scc.get(i)) continue;
+					if(prod.getDTMCState(i) != letter) continue;
+					acc = true;
+					break;
+				}
+				if(acc) break;
 			}
+			if(acc) break;
 		}
 
 		if(!acc){
@@ -565,25 +573,68 @@ public class LTLUBAModelChecker extends PrismComponent
 	{
 		StopWatch timer = new StopWatch(mainLog);
 		timer.start("checking whether SCC " + sccIndex + " is positive");
+
+
 		// first, check that SCC intersects accepting edges
 		DTMCUBAProduct prod = product.getProduct();
-		HashMap<Integer, MyBitSet>  accEdges = product.getAccEdges();
+
+		if (verbosity >= 3) {
+			mainLog.println("SCC = ");
+			for (int state : IterableBitSet.getSetBits(scc)) {
+				int ubaState = prod.getUBAState(state);
+				int lmcState = prod.getDTMCState(state);
+				mainLog.print("("+ubaState+", "+ lmcState + ") ");
+			}
+			mainLog.println();
+		}
+
+
+		HashMap<Integer, Set<APElement>>  accEdges = product.getAccEdges();
 		// first, check that MCC intersects accepting edges
+
+		mainLog.println("UBA acc:");
+		for(int i: uba.getAccEdges().keySet()){
+			if (verbosity >= 3) {
+				mainLog.print("i = " + i + ", " + uba.getAccEdges().get(i)  + "; ");
+			}
+		}
+		mainLog.println();
+
 		boolean acc = false;
 		for (int state : new IterableStateSet(scc, prod.getNumStates())) {
-			MyBitSet set = accEdges.get(state);
-			if(set == null) continue;
-			if(scc.intersects(set)){
-				acc = true;
-				break;
+			if (verbosity >= 3) {
+				mainLog.print("scc state = (" + prod.getUBAState(state) + ", " + prod.getDTMCState(state)  + "); ");
+				mainLog.println();
 			}
+			Set<APElement> set = accEdges.get(state);
+			if(set == null) continue;
+			for(APElement ap: set){
+				int letter = Integer.parseInt(uba.getAPSet().getAP(ap.nextSetBit(0)).substring(1));
+				if (verbosity >= 3) {
+					mainLog.print("letter = " +letter);
+					mainLog.println();
+				}
+				for(int i: prod.getProbStatesSuccessors(state)) {
+					if (verbosity >= 3) {
+						mainLog.print("succ = (" + prod.getUBAState(i) + ", " + prod.getDTMCState(i)  + "); ");
+						mainLog.println();
+					}
+					if(!scc.get(i)) {mainLog.println("not in the SCC"); continue;}
+					if(!prod.lmcLabelMap.get(prod.getDTMCState(i)).equals(ap) ) {mainLog.println("LMC state does not match"); continue;}
+					if(!uba.isAcc(prod.getUBAState(state), ap, prod.getUBAState(i))) {mainLog.println("UBA transition is not accepting"); continue;}
+
+					acc = true;
+					break;
+				}
+				if(acc) break;
+			}
+			if(acc) break;
 		}
 
 		if(!acc){
 			if (verbosity >= 1) timer.stop(" (SCC is zero, no accepting edges)");
 			return false;
 		}
-
 
 		StopWatch timerMatrix = new StopWatch(mainLog);
 		timerMatrix.start("building positivity matrix");
@@ -1020,16 +1071,24 @@ public class LTLUBAModelChecker extends PrismComponent
 
 			for (BitSet bscc : bsccs) {
 				for (int state : new IterableStateSet(bscc, product.getProduct().getNumStates())) {
-					MyBitSet set = product.getAccEdges().get(state);
+					Set<APElement> set = product.getProduct().getAccEdges().get(state);
 					if(set == null) continue;
-					if(bscc.intersects(set)){
-						acc.or(bscc);
-
+					if(set != null){
+						mainLog.println("state = " + state +  ", some acc edges..." + set.toString());
+					}
+					for(APElement ap: set){
+						for(int i: product.getProduct().getProbStatesSuccessors(state)) {
+							if(!bscc.get(i)) continue;
+							if(!product.getProduct().lmcLabelMap.get(product.getProduct().getDTMCState(i)).equals(ap)) continue;
+							if(!uba.isAcc(product.getProduct().getUBAState(state), ap, product.getProduct().getUBAState(i))) continue;
+							acc.set(i);
+						}
 					}
 				}
 			}
 
 		}
+		mainLog.println("acc size = " + acc.size() + ", acc card = " + acc.cardinality()+ ", acc len = " + acc.length());
 
 		mainLog.println("\nComputing reachability probabilities...");
 		DTMCModelChecker mcProduct = new DTMCModelChecker(this);

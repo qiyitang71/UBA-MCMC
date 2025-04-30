@@ -9,7 +9,9 @@ import acceptance.AcceptanceReach;
 import acceptance.AcceptanceType;
 import automata.DA;
 import automata.DASimplifyAcceptance;
+import cern.colt.matrix.DoubleMatrix1D;
 import cern.colt.matrix.impl.SparseDoubleMatrix2D;
+import cern.colt.matrix.linalg.EigenvalueDecomposition;
 import common.IterableBitSet;
 import common.IterableStateSet;
 import common.PathUtil;
@@ -21,19 +23,14 @@ import cern.colt.matrix.impl.DenseDoubleMatrix2D;
 import cern.colt.matrix.linalg.Algebra;
 import cern.colt.matrix.linalg.QRDecomposition;
 import explicit.*;
-import explicit.uba.DTMCUBAProduct;
-import explicit.uba.LTL2UBA;
-import explicit.uba.LTLUBAModelChecker;
 import explicit.uba.SharedWord;
 import jltl2ba.APElement;
 import jltl2ba.APSet;
-import jltl2ba.MyBitSet;
 import jltl2dstar.GFG;
 import jltl2dstar.NBA;
 import jltl2dstar.NBA_State;
 import parser.ast.Expression;
 import parser.type.TypeDouble;
-import prism.ModelType;
 import prism.Pair;
 import prism.PrismComponent;
 import prism.PrismException;
@@ -147,17 +144,18 @@ public class LTLGFGModelChecker extends PrismComponent
                     labelBS.add(new BitSet());
                 }
 
-                /// /////////////////CHEAT!
-                /*
-                BitSet labelStates = new BitSet(model.getNumStates());
 
-                for(int s = 0; s < model.getNumStates(); s++){
-                    if (s%3 == i/2){
-                        labelStates.set(s);
-                    }
-                }
-                labelBS.add(labelStates);
-                */
+                /// /////////////////CHEAT!
+
+//                BitSet labelStates = new BitSet(model.getNumStates());
+//
+//                for(int s = 0; s < model.getNumStates(); s++){
+//                    if (s%4 == i/2){
+//                        labelStates.set(s);
+//                    }
+//                }
+//                labelBS.add(labelStates);
+
                 /// /////////////////
 
                 //uba.getAPSet().renameAP(i, "L"+i);//do not rename
@@ -280,7 +278,7 @@ public class LTLGFGModelChecker extends PrismComponent
                 if (getSettings().getBoolean(PrismSettings.PRISM_GFG_POWER)) {
                     isPositive = handleMCCPower(product, mccIndex, mcc, result, S_MCC_pos);
                 } else {
-                    isPositive = handleMCC(product, mccIndex, mcc, result, S_MCC_pos);
+                    isPositive = handleMCCQuotient(product, mccIndex, mcc, result, S_MCC_pos);//handleMCCQuotient(product, mccIndex, mcc, result, S_MCC_pos);
                 }
                 if (isPositive) posMccCount++;
             }
@@ -347,7 +345,8 @@ public class LTLGFGModelChecker extends PrismComponent
 
     private boolean handleMCC(LTLProduct product, int mccIndex, BitSet mcc, StateValues result, BitSet knownValues) throws PrismException
     {
-        boolean isPositive = checkIsMCCPositive(product, mccIndex, mcc);
+
+        boolean isPositive = checkIsMCCPositiveQuotient(product, mccIndex, mcc);//checkIsMCCPositive(product, mccIndex, mcc);
         if (!isPositive)
             return false;
 
@@ -367,6 +366,246 @@ public class LTLGFGModelChecker extends PrismComponent
 
         return isPositive;
     }
+
+    private boolean handleMCCQuotient(LTLProduct product, int mccIndex, BitSet mcc, StateValues result, BitSet knownValues) throws PrismException
+    {
+//        if(!checkIsMCCPositiveQuotient(product, mccIndex, mcc)){
+//            return false;
+//        }
+
+        StopWatch timer = new StopWatch(mainLog);
+        timer.start("checking whether MCC " + mccIndex + " is positive");
+        DTMCGFGProduct prod = product.getProduct();
+        HashMap<Integer, Set<APElement>> accEdges = product.getAccEdges();
+
+        if (verbosity >= 2){
+            mainLog.println("MCC states:");
+
+            for (int i : IterableBitSet.getSetBits(mcc)) {
+                int ubaState = prod.getUBAState(i);
+                int lmcState = prod.getDTMCState(i);
+                mainLog.print("("+ubaState+", "+ lmcState + ") ");
+            }
+            mainLog.println();
+        }
+
+
+        // first, check that MCC intersects accepting edges
+        boolean acc = false;
+        for (int state : new IterableStateSet(mcc, prod.getNumStates())) {
+            Set<APElement> set = accEdges.get(state);
+            if (set == null) continue;
+            for (APElement ap : set) {
+                for (int i = 0; i < prod.getNumChoices(state); i++) {
+                    if (!prod.getAction(state, i).equals(ap)) continue;
+                    if (prod.allSuccessorsInSet(state, i, mcc)) {
+                        acc = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!acc) {
+            if (verbosity >= 1) timer.stop(" (MCC is zero, no accepting edges)");
+            return false;
+        }
+
+
+
+        //FIX only handle LMCs with the same languages
+        for(int idx = 0; idx < product.getProduct().getNumDtmcStates(); idx++){
+            equivDTMC = new HashMap<>();
+            equivDTMC.put(idx, 0);
+        }
+
+        StopWatch timerMatrix = new StopWatch(mainLog);
+        timerMatrix.start("building positivity matrix");
+        Map<Integer, Integer> map = new LinkedHashMap<Integer, Integer>();
+        //DoubleMatrix2D sccMatrix = product.getProduct().positivityMatrixForMCC(mcc, map, false);
+
+
+        Map<Integer, Integer> equivMap = new LinkedHashMap<Integer, Integer>();
+
+        int size = 0;
+        for (int i : IterableBitSet.getSetBits(mcc)) {
+            int ubaState = prod.getUBAState(i);
+            int lmcState = prod.getDTMCState(i);
+            boolean isSet = false;
+            for (Entry<Integer, Integer> states : map.entrySet()) {
+                int s = states.getKey();
+                if(((equivGFG.containsKey(ubaState) && equivGFG.get(ubaState).get(prod.getUBAState(s))) || prod.getUBAState(s) == ubaState) && (Objects.equals(equivDTMC.get(lmcState), equivDTMC.get(prod.getDTMCState(s))))){
+                    mainLog.println("s = " + prod.getUBAState(s) + ", " + prod.getDTMCState(s) + ", i = " + ubaState + ", " + lmcState);
+
+                    equivMap.put(i, map.get(s));
+                    isSet = true;
+                    break;
+                }
+            }
+            if(!isSet){
+                mainLog.println("new: i = " + ubaState + ", " + lmcState);
+                map.put(i, size);
+                equivMap.put(i, size);
+                size++;
+            }
+        }
+
+        if (verbosity >= 3) {
+            mainLog.println("MCC mapping = " + map);
+            for (Entry<Integer, Integer> states : map.entrySet()) {
+                int prodstate = states.getKey();
+                int ubaState = prod.getUBAState(prodstate);
+                int lmcState = prod.getDTMCState(prodstate);
+                mainLog.print("("+ ubaState + ", " + lmcState + ") ");
+            }
+            mainLog.println();
+        }
+
+        //DoubleMatrix2D matrix = new SparseDoubleMatrix2D(size,size);
+        DoubleMatrix2D sccMatrix = new SparseDoubleMatrix2D(size,size);
+        for (Entry<Integer, Integer> states : map.entrySet()) {
+            int from = states.getKey();
+            for(int c = 0; c < prod.getNumChoices(from); c++) {
+                for (Iterator<Entry<Integer, Double>> it = prod.getTransitionsIterator(from,c); it.hasNext(); ) {
+                    Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
+                    if (mcc.get(to)) {
+                        int matrixTo = equivMap.get(to);
+                        sccMatrix.setQuick(map.get(from), matrixTo, sccMatrix.get(map.get(from),matrixTo)+ probMove.getValue());
+                    }
+                }
+            }
+        }
+
+        if (verbosity >= 2) {
+
+            mainLog.println("sccMatrix: ");
+            for (int i = 0; i< sccMatrix.rows(); i++) {
+                for (int j = 0; j < sccMatrix.columns(); j++) {
+                    mainLog.print(sccMatrix.getQuick(i, j) + ", ");
+                }
+                mainLog.println();
+            }
+            mainLog.println();
+        }
+
+        assert(sccMatrix.rows() == sccMatrix.columns());
+        assert(sccMatrix.rows() == mcc.cardinality());
+        if (verbosity >= 1) {
+            timerMatrix.stop();
+        }
+
+        //check positivity
+
+        if (isEigenValueBig(sccMatrix)) {
+            mainLog.println("MCC has eigenvalue bigger than 1, MCC is zero...");
+            return false;
+        }
+
+        if (isEigenValueOne(sccMatrix)) {
+            mainLog.println("has eigenvalue 1...");
+        }else {
+            mainLog.println("MCC does not have eigenvalue 1, MCC is zero...");
+            return false;
+        }
+
+        int probState = mcc.nextSetBit(0);
+        Set<Integer> cut = generateCut(product.getProduct(), probState, mcc);
+        if (verbosity >= 2) {
+            mainLog.println("Cut: " + cut);
+
+            for (Integer cutState : cut) {
+                mainLog.print("(" + prod.getDTMCState(cutState) + "," + prod.getUBAState(cutState) +  ")" );
+            }
+            mainLog.println();
+        }
+
+
+        //new matrix solve equation system
+
+        // one row additionally for cut
+        DoubleMatrix2D matrix = new SparseDoubleMatrix2D(size+1, size);
+
+        for (int i=0; i < size +1; i++) {
+            for(int j = 0; j < size; j++){
+                matrix.setQuick(i, j, sccMatrix.getQuick(i, j));
+            }
+        }
+
+        if (verbosity >= 2) {
+            //mainLog.println("A = \n"+matrix.toString());
+        }
+
+        for (int i = 0; i < size; i++) {
+            matrix.setQuick(i,i,  matrix.getQuick(i, i) - 1.0);
+        }
+
+        if (verbosity >= 2) {
+            //mainLog.println("A - I = \n"+matrix.toString());
+        }
+
+        // Add cut
+        for (int i : cut) {
+            matrix.setQuick(size, equivMap.get(i), 1.0);
+        }
+
+        if (verbosity >= 2) {
+            //mainLog.println("(A - I) + cut condition = \n"+matrix.toString());
+        }
+
+        //solve equation
+        Algebra algebra = new Algebra();
+        DoubleMatrix2D B = new DenseDoubleMatrix2D(matrix.rows(), 1);
+        B.setQuick(matrix.rows()-1, 0, 1);
+        //if (verbosity >= 2) mainLog.println("B = \n" + B);
+
+        if (verbosity >= 1) timer.stop();
+
+        if (verbosity >= 1) mainLog.println("Solving MCC " + mccIndex + " probability values...");
+        timer.start("solving equation system for positive MCC " + mccIndex);
+        DoubleMatrix2D solution = algebra.solve(matrix, B);
+        assert (solution.rows() == matrix.rows());
+        assert (solution.columns() == 1);
+
+        double cutSum = 0.0;
+        double minValue = 0.0;
+        double maxValue = 0.0;
+        boolean first = true;
+        for (Entry<Integer, Integer> entry : equivMap.entrySet()) {
+            int productIndex = entry.getKey();
+            int solutionIndex = entry.getValue();
+
+            double value = solution.getQuick(solutionIndex, 0);
+            if (sanityCheck && value == 0.0) {
+                throw new PrismException("Something strange going on (probability in positive MCC is zero for state "+productIndex+")");
+            }
+            result.setDoubleValue(productIndex, value);
+            assert(!knownValues.get(productIndex));
+            knownValues.set(productIndex);
+
+            if (cut.contains(productIndex)) {
+                cutSum += value;
+            }
+            if (first) {
+                minValue = maxValue = value;
+                first = false;
+            } else {
+                minValue = Math.min(minValue, value);
+                maxValue = Math.max(maxValue, value);
+            }
+        }
+        if (verbosity >= 1) timer.stop();
+
+        if (verbosity >= 1) {
+            mainLog.println("Sum of probabilities for the cut C = "+cutSum + " for MCC "+mccIndex);
+            mainLog.println("Probabilities in MCC " +mccIndex + " are in the range ["+minValue+","+maxValue+"]");
+        }
+
+        //computeMCCProbs(product, mccIndex, mcc, cut, result, knownValues);
+
+        return true;
+    }
+
 
     private boolean handleMCCPower(LTLProduct product, int mccIndex, BitSet mcc, StateValues result, BitSet knownValues) throws PrismException
     {
@@ -395,9 +634,6 @@ public class LTLGFGModelChecker extends PrismComponent
             if (verbosity >= 1) timer.stop(" (MCC is zero, no accepting edges)");
             return false;
         }
-
-
-
 
         StopWatch timerMatrix = new StopWatch(mainLog);
         timerMatrix.start("building positivity matrix");
@@ -601,7 +837,549 @@ public class LTLGFGModelChecker extends PrismComponent
     }
 
 
-    //TODO: check it has positive solution with x(c) = x(d) for all c ~ d
+    private boolean handleMCCPower2(LTLProduct product, int mccIndex, BitSet mcc, StateValues result, BitSet knownValues) throws PrismException
+    {
+        StopWatch timer = new StopWatch(mainLog);
+        timer.start("checking whether SCC " + mccIndex + " is positive and computing eigenvector");
+        // first, check that SCC intersects accepting edges
+        DTMCGFGProduct prod = product.getProduct();
+        HashMap<Integer, Set<APElement>>  accEdges = product.getAccEdges();
+        // first, check that MCC intersects accepting edges
+        boolean acc = false;
+        for (int state : new IterableStateSet(mcc, prod.getNumStates())) {
+            Set<APElement> set = accEdges.get(state);
+            if(set == null) continue;
+            for(APElement ap: set){
+                for(int i = 0; i < prod.getNumChoices(state);i++) {
+                    if(!prod.getAction(state, i).equals(ap)) continue;
+                    if(prod.allSuccessorsInSet(state, i, mcc)){
+                        acc = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if(!acc){
+            if (verbosity >= 1) timer.stop(" (MCC is zero, no accepting edges)");
+            return false;
+        }
+
+        //FIX only handle LMCs with the same languages
+        for(int idx = 0; idx < product.getProduct().getNumDtmcStates(); idx++){
+            equivDTMC = new HashMap<>();
+            equivDTMC.put(idx, 0);
+        }
+
+        StopWatch timerMatrix = new StopWatch(mainLog);
+        timerMatrix.start("building positivity matrix");
+        Map<Integer, Integer> map = new LinkedHashMap<Integer, Integer>();
+        //FIX
+        //DoubleMatrix2D sccMatrix = product.getProduct().positivityMatrixForMCC(mcc, map, false);
+
+
+        Map<Integer, Integer> equivMap = new LinkedHashMap<Integer, Integer>();
+
+        int size = 0;
+        for (int i : IterableBitSet.getSetBits(mcc)) {
+            int ubaState = prod.getUBAState(i);
+            int lmcState = prod.getDTMCState(i);
+            boolean isSet = false;
+            for (Entry<Integer, Integer> states : map.entrySet()) {
+                int s = states.getKey();
+                if(((equivGFG.containsKey(ubaState) && equivGFG.get(ubaState).get(prod.getUBAState(s))) || prod.getUBAState(s) == ubaState) && (equivDTMC.get(lmcState) == equivDTMC.get(prod.getDTMCState(s)))){
+                    equivMap.put(i, map.get(s));
+                    isSet = true;
+                    break;
+                }
+            }
+            if(!isSet){
+                map.put(i, size);
+                equivMap.put(i, size);
+                size++;
+            }
+        }
+
+        if (verbosity >= 3) {
+            mainLog.println("MCC mapping = "+map);
+        }
+
+        DoubleMatrix2D sccMatrix = new SparseDoubleMatrix2D(size,size);
+        for (Entry<Integer, Integer> states : map.entrySet()) {
+            int from = states.getKey();
+            for(int c = 0; c < prod.getNumChoices(from); c++) {
+                for (Iterator<Entry<Integer, Double>> it = prod.getTransitionsIterator(from,c); it.hasNext(); ) {
+                    Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
+                    if (mcc.get(to)) {
+                        int matrixTo = equivMap.get(to);
+                        sccMatrix.setQuick(map.get(from), matrixTo, sccMatrix.get(map.get(from),matrixTo)+ probMove.getValue());
+                    }
+                }
+            }
+        }
+
+        if (verbosity >= 3) {
+            mainLog.println("MCC mapping = " + map);
+        }
+
+        assert(sccMatrix.rows() == sccMatrix.columns());
+        assert(sccMatrix.rows() == mcc.cardinality());
+        if (verbosity >= 1) {
+            timerMatrix.stop();
+        }
+
+        /*
+        if (isEigenValueBig(sccMatrix)) {
+            mainLog.println("MCC has eigenvalue bigger than 1, MCC is zero...");
+            return false;
+        }
+
+        if (isEigenValueOne(sccMatrix)) {
+            mainLog.println("has eigenvalue 1...");
+        }else {
+            mainLog.println("MCC does not have eigenvalue 1, MCC is zero...");
+            return false;
+        }
+         */
+
+
+        // M' = (M+I) / 2 to avoid periodicity problem
+        // do it using forEachNonZero to exploit sparseness of the matrix
+        sccMatrix.forEachNonZero(new IntIntDoubleFunction() {
+            @Override
+            public double apply(int row, int column, double value)
+            {
+                return value / 2;
+            }
+        });
+        // add I/2 to diagonal
+        for (int i = 0; i < sccMatrix.rows(); i++) {
+            sccMatrix.setQuick(i, i, sccMatrix.getQuick(i, i) + 0.5);
+        }
+
+        if (verbosity >= 2) {
+            //mainLog.println("(M+I)/2 =" + sccMatrix);
+        }
+
+        // do iterations
+        //FIX
+        //int n = mcc.cardinality();
+        int n = size;
+        int maxIters = getSettings().getInteger(PrismSettings.PRISM_MAX_ITERS);
+        boolean absolute = (getSettings().getString(PrismSettings.PRISM_TERM_CRIT).equals("Absolute"));
+        double epsilon = getSettings().getDouble(PrismSettings.PRISM_TERM_CRIT_PARAM);
+
+        DenseDoubleMatrix1D oldX = new DenseDoubleMatrix1D(n);
+        // initialize with 1
+        for (int i=0; i < n; i++) {
+            oldX.setQuick(i, 1.0);
+        }
+        boolean positive = false;
+        for (int iter = 0; iter < maxIters; iter++) {
+            DenseDoubleMatrix1D newX = new DenseDoubleMatrix1D(n);
+            sccMatrix.zMult(oldX, newX);
+
+            if (verbosity >= 2) {
+                //mainLog.println("Iteration " + iter+ ": "+newX.toString());
+            }
+
+            // check whether the we have a "drop" in all elements of the vector
+            boolean allSmaller = true;
+            boolean converged = true;
+            for (int i = 0; i < n; i++) {
+                double oldValue = oldX.getQuick(i);
+                double newValue = newX.getQuick(i);
+
+                if (PrismUtils.doublesAreClose(oldValue, newValue, epsilon, absolute)) {
+                    allSmaller = false;
+                } else {
+                    converged = false;
+                    if (!(newValue < oldValue)) {
+                        allSmaller = false;
+                    }
+                }
+
+                if ((!allSmaller) && (!converged)) {
+                    break;
+                }
+            }
+
+            if (allSmaller) {
+                // we know that the vector will converge against zero, we are done
+                if (verbosity >= 1)
+                    timer.stop(" (SCC is zero, "+iter+" iterations)");
+                return false;
+            }
+
+            oldX = newX;
+
+            if (converged) {
+                positive = true;
+                if (verbosity >= 1)
+                    timer.stop(" (SCC is positive, " + iter + " iterations)");
+                break;
+            }
+        }
+
+        if (!positive) {
+            mainLog.println("MCC does not converge, MCC is zero...");
+            return false;
+            //throw new PrismException("SCC analysis (power method) did not converge within " + maxIters + " iterations");
+        }
+
+//        if (verbosity >= 2) {
+//            mainLog.println("Eigenvector = " +oldX.getQuick(0) + oldX.getQuick(1));
+//        }
+
+        // compute cut
+        int probState = mcc.nextSetBit(0);
+        Set<Integer> cut = generateCut(product.getProduct(), probState, mcc);
+        if (verbosity >= 2) {
+            mainLog.println("Cut: " + cut);
+
+            for (Integer cutState : cut) {
+                mainLog.print("(" + prod.getDTMCState(cutState) + "," + prod.getUBAState(cutState) +  ")" );
+            }
+            mainLog.println();
+        }
+        if (verbosity >= 2) {
+            mainLog.println("Eigenvector = " +oldX.getQuick(0) + oldX.getQuick(1));
+        }
+        // we have to weight the values...
+        double sumCut = 0.0;
+        for (int productIndex : cut) {
+            int tmp = equivMap.get(productIndex);
+            if (verbosity >= 2) {
+                mainLog.println("map.size = " + map.size() + ", tmp=" + tmp + "map.getindex" + map.get(productIndex));
+            }
+            //int solutionIndex = map.get(tmp);
+            sumCut += oldX.getQuick(tmp);//productIndex
+            //FIX
+            //sumCut += oldX.getQuick(productIndex);//tmp
+        }
+        mainLog.println("sumCut = " + sumCut);
+
+        double alpha = 1 / sumCut;
+        if(alpha <= 0 || Double.isInfinite(alpha) || Double.isInfinite(sumCut) ){
+            mainLog.println("MCC does not converge, MCC is zero...");
+            return false;
+        }
+        if (verbosity >= 1) {
+            mainLog.println("Weighing the eigenvector with alpha = " + alpha + " to obtain probabilities");
+        }
+
+        double cutSum = 0.0;
+        double minValue = 0.0;
+        double maxValue = 0.0;
+        boolean first = true;
+        for (Entry<Integer, Integer> entry : map.entrySet()) {
+            int productIndex = entry.getKey();
+            int solutionIndex = entry.getValue();
+
+            double value = oldX.getQuick(solutionIndex);
+            if (sanityCheck && value == 0.0) {
+                throw new PrismException("Something strange going on (probability in positive SCC is zero for state "+productIndex+")");
+            }
+            // scale
+            value = value * alpha;
+            result.setDoubleValue(productIndex, value);
+            assert(!knownValues.get(productIndex));
+            knownValues.set(productIndex);
+
+            if (cut.contains(productIndex)) {
+                cutSum += value;
+            }
+            if (first) {
+                minValue = maxValue = value;
+                first = false;
+            } else {
+                minValue = Math.min(minValue, value);
+                maxValue = Math.max(maxValue, value);
+            }
+        }
+//		if (verbosity >= 1) timer.stop();
+
+        if (verbosity >= 1) {
+            mainLog.println("Sum of probabilities for the cut C = "+cutSum + " for SCC "+mccIndex);
+            mainLog.println("Probabilities in SCC " +mccIndex + " are in the range ["+minValue+","+maxValue+"]");
+        }
+
+        return true;
+    }
+
+
+    private boolean checkIsMCCPositiveQuotient(LTLProduct product, int mccIndex, BitSet mcc) throws PrismException {
+        StopWatch timer = new StopWatch(mainLog);
+        timer.start("checking whether MCC " + mccIndex + " is positive");
+        DTMCGFGProduct prod = product.getProduct();
+        HashMap<Integer, Set<APElement>> accEdges = product.getAccEdges();
+        // first, check that MCC intersects accepting edges
+        boolean acc = false;
+        for (int state : new IterableStateSet(mcc, prod.getNumStates())) {
+            Set<APElement> set = accEdges.get(state);
+            if (set == null) continue;
+            for (APElement ap : set) {
+                for (int i = 0; i < prod.getNumChoices(state); i++) {
+                    if (!prod.getAction(state, i).equals(ap)) continue;
+                    if (prod.allSuccessorsInSet(state, i, mcc)) {
+                        acc = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!acc) {
+            if (verbosity >= 1) timer.stop(" (MCC is zero, no accepting edges)");
+            return false;
+        }
+
+        StopWatch timerMatrix = new StopWatch(mainLog);
+        timerMatrix.start("building positivity matrix");
+        Map<Integer, Integer> map = new LinkedHashMap<Integer, Integer>();
+        //DoubleMatrix2D sccMatrix = product.getProduct().positivityMatrixForMCC(mcc, map, false);
+
+
+        /////////////////////compute language equivalent states
+        /// compute equivalent LMC states
+        // Step 0: build dtmc successor map
+        Map<Integer, Map<Integer, Set<Integer>>> succMap = new HashMap<>(); //successors map for dtmc: S x Symbols -> 2^S
+        Set<Integer> mccSet =new HashSet<>();
+        for(int s: IterableBitSet.getSetBits(mcc)) {
+            mccSet.add(s);
+        }
+        
+        for (int s: IterableBitSet.getSetBits(mcc)) {
+            Map<Integer, Set<Integer>> succLetterMap = new HashMap<>();
+            for(int letter = 0; letter < prod.getNumDtmcStates(); letter++){
+                Set<Integer> possible = prod.getProbStatesLetterSuccessors(s, letter);
+                mainLog.println(s + ", possible = " + possible);
+
+                Set<Integer> t = new HashSet<>();
+                for(int tmp: possible){
+                    if(mcc.get(tmp)){
+                        mainLog.println(s + ", letter = " +letter + ", " + tmp);
+                        t.add(tmp);
+                    }
+                }
+                succLetterMap.put(letter, t);
+            }
+            succMap.put(s, succLetterMap);
+        }
+        {
+            HashMap<Integer, Set<Integer>> succLetterMap = new HashMap<>();
+            for (int letter = 0; letter < prod.getNumDtmcStates(); letter++) {
+                Set<Integer> tmp = new HashSet<>();
+                tmp.add(-1);
+                succLetterMap.put(letter, tmp);
+            }
+            succMap.put(-1, succLetterMap);
+        }
+        if(verbosity >= 2) {
+            mainLog.println("succMap = " + succMap.size());
+            for(int i: succMap.keySet()){
+                mainLog.print( i + " -> " + succMap.get(i) + ", ");
+            }
+            mainLog.println();
+
+        }
+
+
+        // Initial partition: accepting vs non-accepting
+        Set<Integer> accepting = new HashSet<>(mccSet);
+        Set<Integer> nonAccepting = new HashSet<>();
+        nonAccepting.add(-1);
+
+        List<Set<Integer>> partitions = new ArrayList<>();
+        if (!accepting.isEmpty()) partitions.add(accepting);
+        if (!nonAccepting.isEmpty()) partitions.add(nonAccepting);
+
+        boolean refined;
+        do {
+            refined = false;
+            List<Set<Integer>> newPartitions = new ArrayList<>();
+
+            for (Set<Integer> group : partitions) {
+                Map<Map<Integer, Set<Set<Integer>>>, Set<Integer>> splitter = new HashMap<>();
+
+                for (int state : group) {
+                    Map<Integer, Set<Integer>> succLetterMap = succMap.getOrDefault(state, Collections.emptyMap());
+                    Map<Integer, Set<Set<Integer>>> image = new HashMap<>();
+
+                    for(int letter = 0; letter < prod.getNumDtmcStates(); letter++){
+                        Set<Integer> succs = succLetterMap.getOrDefault(letter, Collections.emptySet());
+                        Set<Set<Integer>> targetBlocks = new HashSet<>();
+                        for (Set<Integer> block : partitions) {
+                            for (int s : succs) {
+                                if (block.contains(s)) {
+                                    targetBlocks.add(block);
+                                    break;
+                                }
+                            }
+                        }
+                        image.put(letter, targetBlocks);
+                    }
+
+                    splitter.computeIfAbsent(image, k -> new HashSet<>()).add(state);
+                }
+
+                if (splitter.size() == 1) {
+                    newPartitions.add(group);
+                } else {
+                    refined = true;
+                    newPartitions.addAll(splitter.values());
+                }
+            }
+
+            partitions = newPartitions;
+        } while (refined);
+
+        if (verbosity >= 3) {
+            mainLog.println("partitions = " + partitions);
+        }
+
+        Map<Integer, Integer> equivMap = new LinkedHashMap<Integer, Integer>();
+        for(int idx = 0; idx < partitions.size(); idx++){
+            boolean first = true;
+            for(int s: partitions.get(idx)){
+                if(s == -1) continue;
+                if(first){
+                    map.put(s, idx);
+                    first = false;
+                }
+                equivMap.put(s, idx);
+            }
+        }
+        int size = map.size();
+
+        /////////////////////end language equivalence check
+
+
+        /*
+        Map<Integer, Integer> equivMap = new LinkedHashMap<Integer, Integer>();
+
+        int size = 0;
+        for (int i : IterableBitSet.getSetBits(mcc)) {
+            int ubaState = prod.getUBAState(i);
+            int lmcState = prod.getDTMCState(i);
+            boolean isSet = false;
+            mainLog.println("(ubaState, lmcState) = " + "(" + ubaState + ", " + lmcState + ")");
+
+            for (Entry<Integer, Integer> states : map.entrySet()) {
+                int s = states.getKey();
+                if(((equivGFG.containsKey(ubaState) && equivGFG.get(ubaState).get(prod.getUBAState(s))) || prod.getUBAState(s) == ubaState) && (Objects.equals(equivDTMC.get(lmcState), equivDTMC.get(prod.getDTMCState(s))))){
+                    mainLog.println("equivalent to: "+ "(" + prod.getUBAState(s) + ", " + prod.getDTMCState(s) + ")");
+
+                    equivMap.put(i, map.get(s));
+                    isSet = true;
+                    break;
+                }
+            }
+            if(!isSet){
+                mainLog.println("new");
+                map.put(i, size);
+                equivMap.put(i, size);
+                size++;
+            }
+        }
+        */
+
+
+        if (verbosity >= 3) {
+            mainLog.println("MCC mapping = "+map);
+        }
+
+        //DoubleMatrix2D matrix = new SparseDoubleMatrix2D(size,size);
+        DoubleMatrix2D sccMatrix = new SparseDoubleMatrix2D(size,size);
+        for (Entry<Integer, Integer> states : map.entrySet()) {
+            int from = states.getKey();
+            for(int c = 0; c < prod.getNumChoices(from); c++) {
+                for (Iterator<Entry<Integer, Double>> it = prod.getTransitionsIterator(from,c); it.hasNext(); ) {
+                    Entry<Integer, Double> probMove = it.next();
+                    int to = probMove.getKey();
+                    if (mcc.get(to)) {
+                        int matrixTo = equivMap.get(to);
+                        sccMatrix.setQuick(map.get(from), matrixTo, sccMatrix.get(map.get(from),matrixTo)+ probMove.getValue());
+                    }
+                }
+            }
+        }
+        if (verbosity >= 3) {
+            mainLog.println("MCC mapping = " + map);
+            for (Entry<Integer, Integer> states : map.entrySet()) {
+                int prodstate = states.getKey();
+                int ubaState = prod.getUBAState(prodstate);
+                int lmcState = prod.getDTMCState(prodstate);
+                mainLog.print("("+ubaState+", "+ lmcState + ") ");
+            }
+            mainLog.println();
+        }
+
+        if (verbosity >= 2) {
+
+            mainLog.println("sccMatrix: ");
+            for (int i = 0; i< sccMatrix.rows(); i++) {
+                for (int j = 0; j < sccMatrix.columns(); j++) {
+                    mainLog.print(sccMatrix.getQuick(i, j) + ", ");
+                }
+                mainLog.println();
+            }
+            mainLog.println();
+        }
+        assert(sccMatrix.rows() == sccMatrix.columns());
+        assert(sccMatrix.rows() == mcc.cardinality());
+        if (verbosity >= 1) {
+            timerMatrix.stop();
+        }
+
+
+        if (isEigenValueBig(sccMatrix)) {
+            mainLog.println("MCC has eigenvalue bigger than 1, MCC is zero...");
+            return false;
+        }
+
+        if (isEigenValueOne(sccMatrix)) {
+            mainLog.println("has eigenvalue 1...");
+            return true;
+        }else {
+            mainLog.println("MCC does not have eigenvalue 1, MCC is zero...");
+            return false;
+        }
+
+         /*
+
+        int rows = sccMatrix.rows();
+
+        boolean positive;
+        String posMethod = getSettings().getString(PrismSettings.PRISM_UBA_POS_METHOD);
+        switch (posMethod) {
+            case "SVD": {
+                Algebra algebra = new Algebra();
+                int rank = algebra.rank(sccMatrix);
+                if (rank < rows-1 || rank > rows) {
+                    throw new PrismException("Strange things are going on (rank = " + rank + ", matrix has size " + rows + "x" + rows +")..");
+                }
+
+                if (verbosity >= 1) mainLog.println("Rank of SCC " + mccIndex + " = " + rank + ", full rank is " + rows);
+                positive = rank < rows;
+                break;
+            }
+            case "QR": {
+                QRDecomposition qr = new QRDecomposition(sccMatrix);
+                positive = !hasFullRankWithTolerance(qr);
+                break;
+            }
+            default:
+                throw new PrismException("Unknown UBA method for checking SCC positivity: "+posMethod);
+        }
+
+        if (verbosity >= 1) timer.stop(" (MCC is " + (positive ? "positive" : "zero")+", checked via " + posMethod + ")");
+
+        return positive;
+          */
+    }
+        //TODO: check it has positive solution with x(c) = x(d) for all c ~ d
     private boolean checkIsMCCPositive(LTLProduct product, int mccIndex, BitSet mcc) throws PrismException
     {
         StopWatch timer = new StopWatch(mainLog);
@@ -638,6 +1416,12 @@ public class LTLGFGModelChecker extends PrismComponent
             timerMatrix.stop();
         }
 
+        if(isEigenValueOne(mccMatrix)){
+            mainLog.println("has eigenvalue 1...");
+            return true;
+        }
+
+
         int rows = mccMatrix.rows();
 
         boolean positive;
@@ -667,7 +1451,48 @@ public class LTLGFGModelChecker extends PrismComponent
 
         return positive;
     }
+    //check whether eigenvalue is greater than 1
+    private boolean isEigenValueBig(DoubleMatrix2D matrix){
+        EigenvalueDecomposition eig = new EigenvalueDecomposition(matrix);
+        DoubleMatrix1D realParts = eig.getRealEigenvalues();
+        DoubleMatrix1D imagParts = eig.getImagEigenvalues();
+        double epsilon = getSettings().getDouble(PrismSettings.PRISM_TERM_CRIT_PARAM);
 
+        boolean hasEigenvalueGreaterThanOne = false;
+
+        for (int i = 0; i < realParts.size(); i++) {
+            double real = realParts.get(i);
+            double imag = imagParts.get(i);
+            double abs = Math.hypot(real, imag); // sqrt(real^2 + imag^2)
+
+            if (abs-epsilon > 1.0) {
+                hasEigenvalueGreaterThanOne = true;
+                break;
+            }
+        }
+        return hasEigenvalueGreaterThanOne;
+    }
+
+    //check whether eigenvalue is greater than 1
+    private boolean isEigenValueOne(DoubleMatrix2D matrix){
+        EigenvalueDecomposition eig = new EigenvalueDecomposition(matrix);
+        DoubleMatrix1D realParts = eig.getRealEigenvalues();
+        DoubleMatrix1D imagParts = eig.getImagEigenvalues();
+        boolean absolute = (getSettings().getString(PrismSettings.PRISM_TERM_CRIT).equals("Absolute"));
+        double epsilon = getSettings().getDouble(PrismSettings.PRISM_TERM_CRIT_PARAM);
+        boolean hasEigenvalueOne = false;
+
+        for (int i = 0; i < realParts.size(); i++) {
+            double real = realParts.get(i);
+            double imag = imagParts.get(i);
+            double abs = Math.hypot(real, imag); // sqrt(real^2 + imag^2)
+            if (PrismUtils.doublesAreClose(abs, 1, 1e-5, absolute)) {
+                hasEigenvalueOne = true;
+                break;
+            }
+        }
+        return hasEigenvalueOne;
+    }
     private void computeMCCProbs(LTLProduct product, int mccIndex, BitSet mcc, Set<Integer> cut, StateValues result, BitSet knownValues) throws PrismException
     {
         StopWatch timer = new StopWatch(mainLog);
@@ -681,15 +1506,48 @@ public class LTLGFGModelChecker extends PrismComponent
         Algebra algebra = new Algebra();
         DoubleMatrix2D B = new DenseDoubleMatrix2D(matrix.rows(), 1);
         B.setQuick(matrix.rows()-1, 0, 1);
-        //if (verbosity >= 2) mainLog.println("B = \n" + B);
+        if (verbosity >= 2) {
+
+            mainLog.println("Matrix: ");
+            for (int i = 0; i< matrix.rows(); i++) {
+                for (int j = 0; j < matrix.columns(); j++) {
+                    mainLog.print(matrix.getQuick(i, j) + ", ");
+                }
+                mainLog.println();
+            }
+            mainLog.println();
+            mainLog.print("B: ");
+            for (int i = 0; i< matrix.rows(); i++){
+                mainLog.print(B.getQuick(i,0) + ", ");
+            }
+            mainLog.println();
+        }
 
         if (verbosity >= 1) timer.stop();
 
         if (verbosity >= 1) mainLog.println("Solving MCC " + mccIndex + " probability values...");
         timer.start("solving equation system for positive MCC " + mccIndex);
-        DoubleMatrix2D solution = algebra.solve(matrix, B);
+
+        //********* new solver
+        DoubleMatrix2D At = algebra.transpose(matrix);
+        DoubleMatrix2D AtA = algebra.mult(At, matrix);
+        DoubleMatrix2D AtB = algebra.mult(At, B);
+
+        // Now solve AtA * x = AtB
+        DoubleMatrix2D solution = algebra.solve(AtA, AtB);
+        //*********
+
+        //DoubleMatrix2D solution = algebra.solve(matrix, B);
         assert (solution.rows() == matrix.rows());
         assert (solution.columns() == 1);
+
+        if (verbosity >= 2) {
+            mainLog.println("Solution: " + solution.rows() + ", " + solution.columns());
+            for (int i = 0; i < solution.rows(); i++) {
+                mainLog.print(solution.getQuick(i, 0) + ", ");
+            }
+            mainLog.println();
+        }
 
         double cutSum = 0.0;
         double minValue = 0.0;
@@ -749,7 +1607,7 @@ public class LTLGFGModelChecker extends PrismComponent
         Algebra algebra = new Algebra();
         DoubleMatrix2D solution = algebra.solve(lgs.first, lgs.second);
 
-        if (verbosity >= 2) mainLog.println("Solution = " + solution);
+        //if (verbosity >= 2) mainLog.println("Solution = " + solution);
 
         for (Entry<Integer, Integer> entry : map.entrySet()) {
             int productIndex = entry.getKey();
@@ -845,7 +1703,7 @@ public class LTLGFGModelChecker extends PrismComponent
             while(!queue.isEmpty()) {
                 Pair<ProductState, SharedWord<APElement>> entry = queue.poll();
                 ProductState current = entry.first;
-                if (verbosity >= 2) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
+                if (verbosity >= 4) mainLog.println("queue entry: (" + current.getFirstState() + "," + current.getSecondState() + ")");
 
                 if (!visited.contains(current)) {
                     SharedWord<APElement> word = entry.second;
@@ -900,7 +1758,7 @@ public class LTLGFGModelChecker extends PrismComponent
                                                 (!isRightBis  && (leftSucc == probState) && !succsForZ.get(rightSucc).isEmpty())) {
                                     //Found extension
                                     found = true;
-                                    if (verbosity >= 2) {
+                                    if (verbosity >= 3) {
                                         String wordInfo = curWord.size() > 3 ? "length(y) = " + curWord.size() : "y = " + curWord;
                                         mainLog.println("FOUND EXTENSION: (" + leftSucc + "," + rightSucc + ") with word " + wordInfo + ";");
                                         String cutInfo;
@@ -1024,51 +1882,6 @@ public class LTLGFGModelChecker extends PrismComponent
             return C;
     }
 
-    /**
-     * Validates that the atomic propositions
-     * conform to the standard values that PRISM expects:
-     *   L0, ..., Ln-1 (in arbitrary order)
-     * if there are {@code n} expected atomic propositions.
-     * <br/>
-     * The automaton may actually have less atomic propositions than expected,
-     * e.g., if the given atomic proposition does not influence the acceptance
-     * of a run in the automaton.
-     * <br/>
-     * If there is an error, throws a {@code PrismException} detailing the problem.
-     * @param expectedNumberOfAPs the expected number of atomic propositions
-     */
-    private void checkForCanonicalAPs(APSet aps, int expectedNumberOfAPs) throws PrismException {
-        BitSet seen = new BitSet();
-        for (String ap : aps) {
-            if (!ap.substring(0,1).equals("L")) {
-                throw new PrismException("In UBA, unexpected atomic proposition "+ap+", expected L0, L1, ...");
-            }
-            try {
-                int index = Integer.parseInt(ap.substring(1));
-                if (seen.get(index)) {
-                    throw new PrismException("In UBA, duplicate atomic proposition "+ap);
-                }
-                if (index < 0) {
-                    throw new PrismException("In UBA, unexpected atomic proposition "+ap+", expected L0, L1, ...");
-                }
-                if (index >= expectedNumberOfAPs) {
-                    throw new PrismException("In UBA, unexpected atomic proposition "+ap+", expected highest index to be "+(expectedNumberOfAPs-1));
-                }
-                seen.set(index);
-            } catch (NumberFormatException e) {
-                throw new PrismException("In UBA, unexpected atomic proposition "+ap+", expected L0, L1, ...");
-            }
-        }
-        // We are fine with an empty apList or an apList that lacks some of the expected Li.
-    }
-
-    private List<BitSet> computeSCCs(DTMCGFGProduct prod) throws PrismException {
-        SCCConsumerStore sccs = new SCCConsumerStore();
-        SCCComputer sccc = SCCComputer.createSCCComputer(this, prod, sccs);
-        sccc.computeSCCs();
-        return sccs.getSCCs();
-    }
-
     private List<BitSet> computeMCCs(DTMCGFGProduct prod) throws PrismException {
 //        ECComputer ecs = ECComputer.createECComputer(this, prod);
 //        ecs.computeMECStates();
@@ -1078,58 +1891,6 @@ public class LTLGFGModelChecker extends PrismComponent
         return ecs.getMECStates();
     }
 
-    public BitSet computeAccBSCCs(Model model, final BitSet finalStates) throws PrismException
-    {
-        final BitSet result = new BitSet();
-
-        // Compute bottom strongly connected components (BSCCs)
-        // and check using the following SCCConsumerBSCCs:
-        SCCConsumerBSCCs sccConsumer = new SCCConsumerBSCCs() {
-
-            @Override
-            public void notifyNextBSCC(BitSet bscc) {
-                if (bscc.intersects(finalStates)) {
-                    result.or(bscc);
-                }
-            }
-        };
-
-        SCCComputer sccComputer = SCCComputer.createSCCComputer(this, model, sccConsumer);
-        sccComputer.computeSCCs();
-
-        // now, the result is ready
-        return result;
-    }
-
-    public StateValues computeWithDA(DTMC model, NBA uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
-        LTLModelChecker mcLtl = new LTLModelChecker(this);
-        DA<BitSet, ? extends AcceptanceOmega> da = uba.createPrismDAFromDeterministicNBA();
-
-        da = DASimplifyAcceptance.simplifyAcceptance(this, da, AcceptanceType.RABIN, AcceptanceType.REACH);
-        mainLog.println("The UBA is actually deterministic, we continue with standard model checking with a "+da.getAutomataType()+" with "+da.size()+" states.");
-
-        explicit.LTLModelChecker.LTLProduct<DTMC> product = mcLtl.constructProductModel(da, model, labelBS, statesOfInterest);
-
-        // Find accepting states + compute reachability probabilities
-        BitSet acc;
-        if (product.getAcceptance() instanceof AcceptanceReach) {
-            mainLog.println("\nSkipping BSCC computation since acceptance is defined via goal states...");
-            acc = ((AcceptanceReach)product.getAcceptance()).getGoalStates();
-        } else {
-            mainLog.println("\nFinding accepting BSCCs...");
-            acc = mcLtl.findAcceptingBSCCs(product.getProductModel(), product.getAcceptance());
-        }
-        mainLog.println("\nComputing reachability probabilities...");
-        DTMCModelChecker mcProduct = new DTMCModelChecker(this);
-        mcProduct.inheritSettings(mc);
-        StateValues probsProduct = StateValues.createFromDoubleArray(mcProduct.computeReachProbs(product.getProductModel(), acc).soln, product.getProductModel());
-
-        // Mapping probabilities in the original model
-        StateValues probs = product.projectToOriginalModel(probsProduct);
-        probsProduct.clear();
-
-        return probs;
-    }
 
     public StateValues checkProbPathFormulaLTL(DTMC model, Expression expr, boolean qual, BitSet statesOfInterest) throws PrismException
     {

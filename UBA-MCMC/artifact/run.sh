@@ -22,5 +22,4 @@ do
   echo -e "GFG Model Checking gfg-$i ..." 
   ../prism/bin/prism -javamaxmem 100g -javastack 1g -timeout 30m -explicit -gfgmc -ubaverbosity 1 -gfgpower random_lmc.pm -pf 'P=?[ HOA: {"'"GFGs/gfg-$i.hoa"'", "sigma_0" <- "sigma", "pi_0" <- "pi", "hash_0" <- "hash","dollar_0" <- "dollar" }]' >> "results/gfg-$i.txt"
 
-
 done

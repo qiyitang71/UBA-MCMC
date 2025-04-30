@@ -31,6 +31,7 @@ public class DTMCGFGProduct extends MDPSimple {
     protected HashMap<Integer, Set<APElement>> accEdges;
     protected int ubaSize;
     protected int invMap[];
+    protected int dtmcSize;
 
     private PrismLog mainLog;
     private PrismSettings settings;
@@ -45,7 +46,7 @@ public class DTMCGFGProduct extends MDPSimple {
     HashMap<Integer, Integer> stateMap = new HashMap<>();
     ArrayList<Integer>  splitterIds = new ArrayList<>();
 
-    HashMap<Integer, Integer>  equivDTMC;
+    HashMap<Integer, Integer>  equivDTMC = new HashMap<>();;
     HashMap<Integer, BitSet> equivGFG;
 
 
@@ -60,16 +61,6 @@ public class DTMCGFGProduct extends MDPSimple {
             default:
                 throw new IllegalStateException();
         }
-    }
-
-    public Set<Integer> getProbStatesSuccessors(final int probState) {
-        Set<Integer> result = new HashSet<Integer>();
-
-        for(Iterator<Integer> probSucc = getSuccessorsIterator(probState); probSucc.hasNext();) {
-            result.add(probSucc.next());
-        }
-
-        return result;
     }
 
     public int getDTMCState(final int prodState) {
@@ -90,6 +81,7 @@ public class DTMCGFGProduct extends MDPSimple {
     public DTMCGFGProduct(PrismComponent parent, DTMC dtmc, GFG uba, Vector<BitSet> labelBS, BitSet statesOfInterest) throws PrismException {
         this.mainLog = parent.getLog();
         this.settings = parent.getSettings();
+        this.dtmcSize = dtmc.getNumStates();
 
         verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
 
@@ -197,7 +189,7 @@ public class DTMCGFGProduct extends MDPSimple {
                 queue.add(new Point(s_0,q_0.intValue()));
                 addState();
                 addInitialState(getNumStates() - 1);
-                if (verbosity > 2) {
+                if (verbosity >= 2) {
                     mainLog.println("INITIAL: " + (getNumStates()-1) + "->(" + s_0 + "," + q_0.intValue() + ")" + " in constructing GFG DTMC product ");
                 }
                 map[s_0 * ubaSize + q_0] = getNumStates() - 1;
@@ -336,12 +328,15 @@ public class DTMCGFGProduct extends MDPSimple {
         }
 
         /// compute equivalent LMC states
+
+        /// compute equivalent LMC states
         // Step 0: build dtmc successor map
 
         Map<Integer, Set<Integer>> symbolMap = new HashMap<>();
         int index = 0;
         for(String key: labelStringMap.keySet()){
             symbolMap.put(index, labelStringMap.get(key));
+            //FIX
         }
 
         HashMap<Integer, HashMap<Integer,Integer>> succMap = new HashMap<>(); //successors map for dtmc: S x Symbols -> 2^S
@@ -381,7 +376,7 @@ public class DTMCGFGProduct extends MDPSimple {
         // Step 1: Partition states into final and non-final sets
         Set<Integer> nonFinalStates = new HashSet<>();
         for (int state = 0; state < dtmc.getNumStates(); state++) {
-                nonFinalStates.add(state);
+            nonFinalStates.add(state);
         }
 
         Set<Integer> finalStates = new HashSet<>();
@@ -458,11 +453,12 @@ public class DTMCGFGProduct extends MDPSimple {
         if(verbosity >= 2) {
             mainLog.println("equivDTMC size = " + partitions.size());
         }
-
     }
 
 
-
+    public int getNumDtmcStates(){
+        return this.dtmcSize;
+    }
     public HashMap<Integer, Set<APElement>> getAccEdges() {
         return accEdges;
     }
@@ -566,6 +562,7 @@ public class DTMCGFGProduct extends MDPSimple {
         // Add cut
         for (int i : cut) {
             matrix.setQuick(size, map.get(i), 1.0);
+            mainLog.println("cut i = "+i + ", index = " + map.get(i));
         }
 
         if (verbosity >= 2) {
@@ -643,6 +640,36 @@ public class DTMCGFGProduct extends MDPSimple {
             return result;
         }
 
+//        public Set<Integer> getProbStatesSuccessors(final int probState) {
+//            Set<Integer> result = new HashSet<Integer>();
+//            for(int c = 0; c < getNumChoices(probState); c++) {
+//                APElement symbol = (APElement) getAction(probState, c);
+//                result.addAll(getProbStatesSuccessors(probState, symbol));
+//            }
+//            return result;
+//        }
+
+        public Set<Integer> getProbStatesSuccessors(final int probState) {
+            Set<Integer> result = new HashSet<Integer>();
+
+            for(Iterator<Integer> probSucc = getSuccessorsIterator(probState); probSucc.hasNext();) {
+                result.add(probSucc.next());
+            }
+
+            return result;
+        }
+
+    public Set<Integer> getProbStatesLetterSuccessors(final int probState, final int letter) {
+        Set<Integer> result = new HashSet<Integer>();
+
+        for(Iterator<Integer> probSucc = getSuccessorsIterator(probState); probSucc.hasNext();) {
+            int succ = probSucc.next();
+            if(getDTMCState(succ) == letter){
+                result.add(succ);
+            }
+        }
+        return result;
+    }
         public Set<Integer> getProbStatesSuccessors(final int probState, final int symbol) {
             Set<Integer> result = new HashSet<Integer>();
 
@@ -696,57 +723,6 @@ public class DTMCGFGProduct extends MDPSimple {
             }
         }
         return dtmc;
-    }
-
-
-    /////////////////DFA Partition Refinement
-    private void refinePartition(Set<Integer> symbols, HashMap<Integer, HashMap<Integer,BitSet>> prevMap, HashMap<Integer,HashMap<Integer,BitSet>> succMap ,BitSet splitBlock, List<BitSet> partitionQueue) {
-
-        for (int symbol : symbols) {
-            BitSet X = new BitSet(prevMap.size());
-
-            for (int state : IterableBitSet.getSetBits(splitBlock)) {
-                BitSet prevStates = prevMap.get(state).getOrDefault(symbol, new BitSet(prevMap.size()));
-                X.or(prevStates);
-            }
-
-            if (X.isEmpty()) continue;
-
-            List<BitSet> tmp = new ArrayList<>(partitionQueue);
-
-            for (int pId = 0; pId < partitionQueue.size(); pId++) {
-                BitSet Y = partitionQueue.get(pId);
-                BitSet interSet = new BitSet(prevMap.size());
-                interSet.or(X);
-                interSet.and(Y);
-
-                BitSet minusSet = new BitSet(prevMap.size());
-                minusSet.or(Y);
-                minusSet.andNot(X);
-
-                if (interSet.isEmpty() || minusSet.isEmpty()) continue;
-
-                tmp.set(pId, interSet);
-                int extId = tmp.size();
-                tmp.add(minusSet);
-
-                if (splitterIds.contains(pId)) {
-                    splitterIds.add(extId);
-                } else {
-                    if (interSet.size() <= minusSet.size()) {
-                        splitterIds.add(pId);
-                    } else {
-                        splitterIds.add(extId);
-                    }
-                }
-
-                for (int state : IterableBitSet.getSetBits(minusSet)) {
-                    stateMap.put(state, extId);
-                }
-            }
-
-            partitionQueue = tmp;
-        }
     }
 }
 

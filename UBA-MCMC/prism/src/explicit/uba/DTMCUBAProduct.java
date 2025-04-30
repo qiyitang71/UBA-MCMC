@@ -40,7 +40,7 @@ import prism.PrismSettings;
 import jltl2dstar.GFG;
 
 public class DTMCUBAProduct extends DTMCSimple {
-	protected HashMap<Integer, MyBitSet> accEdges;
+	protected HashMap<Integer, Set<APElement>> accEdges;
 
 	//protected MyBitSet finalStates;
 	protected int ubaSize;
@@ -52,6 +52,8 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 	private enum MatrixType {MATRIX_DENSE, MATRIX_SPARSE, MATRIX_RC};
 	private MatrixType matrixType = MatrixType.MATRIX_RC;
+
+	public HashMap<Integer, APElement> lmcLabelMap = new HashMap<>();
 
 	private DoubleMatrix2D newMatrix(int rows, int columns) {
 		switch (matrixType) {
@@ -89,10 +91,11 @@ public class DTMCUBAProduct extends DTMCSimple {
 		this.settings = parent.getSettings();
 
 		verbosity = settings.getInteger(PrismSettings.PRISM_UBA_VERBOSITY);
-
 		if(verbosity >= 2) {
 			mainLog.println("Start constructing product");
+			mainLog.println("DTMC states: " + dtmc.getStatesList());
 		}
+
 
 		ubaSize = uba.getStateCount();
 		int numAPs = uba.getAPSize();
@@ -110,6 +113,22 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 		// Create a (simple, mutable) model of the appropriate type
 		setVarList(newVarList);
+
+
+
+
+		// print debug
+
+		for (int lmcState : new IterableStateSet(dtmc.getNumStates())) {
+			for (int k = 0; k < numAPs; k++) {
+				s_labels.set(k, labelBS.get(Integer.parseInt(uba.getAPSet().getAP(k).substring(1))).get(lmcState));
+			}
+			APElement ap1 = new APElement(s_labels);
+			lmcLabelMap.put(lmcState,ap1);
+			if(verbosity >= 2) {
+				mainLog.println("DTMC state: " + lmcState + ", ap = " + ap1);
+			}
+		}
 
 		// Encoding: 
 		// each probabiblistic state s' = <s, q> = 2*(s * ubaSize + q)
@@ -235,27 +254,55 @@ public class DTMCUBAProduct extends DTMCSimple {
 
 		//Lift acceptance condition
 		accEdges = new HashMap<>();
-
+		for (int i = 0; i < getNumStates(); i++) {
+			int q = getUBAState(i);
+			//APSet apset = new APSet();
+			if (uba.getAccEdges().get(q) != null) {
+				Set<APElement> apset = uba.getAccEdges().get(q).keySet();
+				accEdges.put(i, apset);
+			}
+		}
+		/*
 		for(int i = 0; i < getNumStates(); i++) {
 			int q = getUBAState(i);
 			//APSet apset = new APSet();
 
 			if(uba.getAccEdges().get(q) != null) {
 				Set<APElement> apset = uba.getAccEdges().get(q).keySet();
-				for(APElement ap: apset){
-					int letter = Integer.parseInt(uba.getAPSet().getAP(ap.nextSetBit(0)).substring(1));
-					Set<Integer> succs = getProbStatesSuccessors(i, letter);
-					if(accEdges.get(i)!=null){
-						for(int ns : succs) accEdges.get(i).set(ns);
-					}else{
-						MyBitSet myBitSet = new MyBitSet(this.numStates);
-						for(int ns : succs) myBitSet.set(ns);
-						accEdges.put(i, myBitSet);
+				for (APElement ap : apset) {
+					//int letter = Integer.parseInt(uba.getAPSet().getAP(ap.nextSetBit(0)).substring(1));
+
+
+					for (int lmcState : new IterableStateSet(dtmc.getNumStates())) {
+						for (int k = 0; k < numAPs; k++) {
+							s_labels.set(k, labelBS.get(Integer.parseInt(uba.getAPSet().getAP(k).substring(1))).get(lmcState));
+						}
+						APElement ap1 = new APElement(s_labels);
+						if (ap1.equals(ap)) {
+							Set<Integer> succs = getProbStatesSuccessors(i, lmcState);
+							if (accEdges.get(i) != null) {
+								for (int ns : succs) accEdges.get(i).set(ns);
+							} else {
+								MyBitSet myBitSet = new MyBitSet(this.numStates);
+								for (int ns : succs) myBitSet.set(ns);
+								accEdges.put(i, myBitSet);
+							}
+							if (verbosity >= 2) {
+								mainLog.println("(" + q + ", " + getDTMCState(i) + ")" + ", letter =  " + lmcState + ", succs = " + succs);
+							}
+						}
 					}
+
+
+//					if(verbosity >= 2) {
+//						mainLog.println("(" + q + ", " + getDTMCState(i)+ ")" + ", letter =  " + letter + ", succs = " + succs);
+//					}
+
 				}
 
 			}
 		}
+		*/
 		if(verbosity >= 2) {
 			mainLog.println("Accepting transitions: " + accEdges);
 		}
@@ -278,9 +325,9 @@ public class DTMCUBAProduct extends DTMCSimple {
 //	public MyBitSet getFinalStates() {
 //		return finalStates;
 //	}
-	public HashMap<Integer, MyBitSet> getAccEdges() {
-	return accEdges;
-}
+	public HashMap<Integer, Set<APElement>> getAccEdges() {
+		return accEdges;
+	}
 
 	public String SCC2Octave(BitSet scc) {
 		String result = " A = [";
