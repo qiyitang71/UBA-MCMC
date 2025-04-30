@@ -3,10 +3,12 @@
 This artifact provides the source code for our tool, [UBA-MCMC](https://github.com/qiyitang71/UBA-MCMC), which performs model checking of Markov chains against unambiguous Büchi automata (UBA) specifications.
 UBA-MCMC is distributed under the GNU General Public License (GPL) v2.
 
-## Load Docker Image
+## Load Docker Image 
 
 Ensure [Docker](https://www.docker.com/get-started/) is installed.
 **Note:** Docker commands typically require **root** access.
+
+Download the Docker image from [uba-mcmc](https://zenodo.org/records/15215078).
 
 Load the Docker image:
 
